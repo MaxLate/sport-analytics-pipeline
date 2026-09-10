@@ -34,6 +34,7 @@
     --color-recovery: #199e70;
     --color-sleep: #9085e9;
     --color-strain: #e66767;
+    --color-weather: #4a9fd8;
     --stage-light: #3987e5;
     --stage-deep: #9085e9;
     --stage-rem: #199e70;
@@ -377,8 +378,10 @@ table.dataTable td.num {
     <h2 class="sectionTitle" style="font-size: 1.1rem; margin-top: 28px;">Sleep stage composition (this week vs last week)</h2>
     <div class="stageBars" id="stageBars"></div>
 
+    <!-- Moon phase strip hidden for now — re-enable by uncommenting
     <h2 class="sectionTitle" style="font-size: 1.1rem; margin-top: 28px;">Moon phase — last 14 nights</h2>
     <div class="moonStrip" id="moonStrip"></div>
+    -->
 </div>
 
 <!-- TRAINING -->
@@ -425,6 +428,33 @@ table.dataTable td.num {
     </div>
 </div>
 
+<!-- WEATHER -->
+<div class="panel">
+    <h2 class="sectionTitle">
+        <span>Weather</span>
+        <div class="granularityToggle" data-panel="weather">
+            <button class="toggleBtn active" data-granularity="day">Day</button>
+            <button class="toggleBtn" data-granularity="week">Week</button>
+            <button class="toggleBtn" data-granularity="month">Month</button>
+        </div>
+    </h2>
+    <canvas id="weatherChart" class="chart-box"></canvas>
+    <div class="statGrid">
+        <div class="tile small">
+            <p class="label">Avg temp (30d)</p>
+            <p class="value" id="weatherTempAvgValue">–</p>
+        </div>
+        <div class="tile small">
+            <p class="label">Precipitation days (30d)</p>
+            <p class="value" id="weatherPrecipDaysValue">–</p>
+        </div>
+        <div class="tile small">
+            <p class="label">Avg sunshine (30d)</p>
+            <p class="value" id="weatherSunshineValue">–</p>
+        </div>
+    </div>
+</div>
+
 <script src="dashboard-utils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
@@ -435,6 +465,7 @@ const API_BASE = "http://127.0.0.1:8000";
 const COLOR_RECOVERY = "#199e70";
 const COLOR_SLEEP = "#9085e9";
 const COLOR_STRAIN = "#e66767";
+const COLOR_WEATHER = "#4a9fd8";
 const CATEGORICAL = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"];
 const OTHER_COLOR = "#898781";
 const STAGE_COLORS = { light: "#3987e5", deep: "#9085e9", rem: "#199e70", awake: "#e66767" };
@@ -454,7 +485,7 @@ Chart.defaults.font.family = "'Roobert', 'Inter', sans-serif";
 const charts = {};
 // Raw daily records kept around per panel so toggling granularity can re-bucket them.
 const panelData = {};
-const panelGranularity = { recovery: "day", sleep: "day", strain: "day" };
+const panelGranularity = { recovery: "day", sleep: "day", strain: "day", weather: "day" };
 
 function fmtDate(d) {
     return new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -532,6 +563,7 @@ const PANEL_CHART_CONFIG = {
     recovery: { canvasId: "recoveryChart", valueField: "recovery_score", color: COLOR_RECOVERY, yLabel: "Recovery" },
     sleep: { canvasId: "sleepChart", valueField: "sleep_performance", color: COLOR_SLEEP, yLabel: "Sleep performance" },
     strain: { canvasId: "strainChart", valueField: "activity_strain", color: COLOR_STRAIN, yLabel: "Strain" },
+    weather: { canvasId: "weatherChart", valueField: "temperature_mean_celsius", color: COLOR_WEATHER, yLabel: "Temp (°C)" },
 };
 
 document.querySelectorAll(".granularityToggle").forEach(toggle => {
@@ -659,7 +691,22 @@ function renderSleepSection(data) {
     renderStatTile("sleepDebt", latest.sleep_debt_minutes != null ? `${Math.round(latest.sleep_debt_minutes)} min` : "–", debtDeltas.delta7);
 
     renderStageBars(weeklyStageAverages(data, refDate));
-    renderMoonStrip(data);
+    // renderMoonStrip(data); // hidden for now, see index.html moonStrip markup
+}
+
+function renderWeatherSection(data) {
+    panelData.weather = data;
+    renderGranularChart("weather", "weatherChart", "temperature_mean_celsius", COLOR_WEATHER, "Temp (°C)");
+
+    const recent30 = last(data, 30);
+    const tempAvg30 = avgField(recent30, "temperature_mean_celsius");
+    document.getElementById("weatherTempAvgValue").textContent = tempAvg30 !== null ? `${tempAvg30.toFixed(1)}°C` : "–";
+
+    const precipDays = recent30.filter(d => d.had_precipitation).length;
+    document.getElementById("weatherPrecipDaysValue").textContent = precipDays;
+
+    const sunshineAvg30 = avgField(recent30, "sunshine_duration_hours");
+    document.getElementById("weatherSunshineValue").textContent = sunshineAvg30 !== null ? `${sunshineAvg30.toFixed(1)}h` : "–";
 }
 
 function renderTrainingSection(data) {
@@ -752,10 +799,12 @@ Promise.all([
     fetch(`${API_BASE}/recovery`).then(r => r.json()),
     fetch(`${API_BASE}/sleep`).then(r => r.json()),
     fetch(`${API_BASE}/workouts`).then(r => r.json()),
-]).then(([recovery, sleep, workouts]) => {
+    fetch(`${API_BASE}/weather`).then(r => r.json()),
+]).then(([recovery, sleep, workouts, weather]) => {
     if (recovery.length) renderRecoverySection(recovery);
     if (sleep.length) renderSleepSection(sleep);
     if (workouts.length) renderTrainingSection(workouts);
+    if (weather.length) renderWeatherSection(weather);
 }).catch(err => console.error("Failed to load dashboard data:", err));
 </script>
 

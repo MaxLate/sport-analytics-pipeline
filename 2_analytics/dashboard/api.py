@@ -114,8 +114,7 @@ def get_workouts():
 
 @app.get("/weather")
 def get_weather():
-    """Returns daily local weather. Not yet wired into the frontend —
-    reserved for a future weather panel."""
+    """Returns daily local weather."""
     con = duckdb.connect(DUCKDB_PATH, read_only=True)
     df = con.execute(
         """
