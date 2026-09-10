@@ -1,0 +1,21 @@
+Introduction to run: dashboard
+
+1. Start the API (from project root directory):
+    - uv run uvicorn "2_analytics.dashboard.api:app" --reload
+    - API will run on: http://127.0.0.1:8000
+
+2. Start the HTML server (from 2_analytics/dashboard/ directory):
+    - cd 2_analytics/dashboard
+    - python3 -m http.server 5500
+    - HTML server will run on: http://127.0.0.1:5500
+
+3. Open browser and enter:
+     http://127.0.0.1:5500/
+
+Note:
+- Keep both servers running (API on port 8000, HTML on port 5500)
+- The HTML file fetches data from the API at http://127.0.0.1:8000/recovery, /sleep, /workouts
+- /weather is exposed but not yet used by the frontend (reserved for a future weather panel)
+- Make sure the database is at: 0_data/database/analytics.duckdb
+- Make sure these tables exist: whoop.fct_whoop_recovery, whoop.fct_whoop_sleeps, whoop.fct_whoop_sleep_quality, whoop.fct_whoop_workouts, weather.fct_weather_daily
+- DuckDB only allows one writer at a time — if Airflow is mid-run against analytics.duckdb, the API's read-only connections may briefly fail; just retry.

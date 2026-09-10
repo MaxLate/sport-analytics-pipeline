@@ -1,0 +1,14 @@
+whoop:
+  client_id: 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+  client_secret: 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+  access_token: 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+  refresh_token: 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+  redirect_url: http://localhost:8000/callback
+  backfill_start_date: '2025-01-01 00:00:00.000000'
+weather:
+  city: "Your City"
+  latitude: 0.0
+  longitude: 0.0
+  timezone: "Europe/Berlin"
+database:
+  path: 0_data/database/source.duckdb

@@ -1,0 +1,18 @@
+sport_analytics:
+  target: transform
+  outputs:
+    source:
+      type: duckdb
+      path: ../../0_data/database/source.duckdb
+      database: source
+      schema: main
+    transform:
+      type: duckdb
+      path: ../../0_data/database/transform.duckdb
+      database: transform
+      schema: main
+    analytics:
+      type: duckdb
+      path: ../../0_data/database/analytics.duckdb
+      database: analytics
+      schema: main

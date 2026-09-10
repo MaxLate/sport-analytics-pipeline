@@ -1,0 +1,58 @@
+sources:
+
+  - name: mooncalender
+    description: Data of the moon phases and illumination of each day.
+    database: source
+    schema: seeds
+
+  - name: activity_mapping
+    description: Mapping of WHOOP activity names to a unified activity taxonomy.
+    database: source
+    schema: seeds
+
+tables:
+    - name: mooncalender
+      description: Data of the moon phases and illumination of each day.
+
+    - name: activity_mapping
+      description: Mapping of WHOOP activity names to a unified activity taxonomy.
+
+models:
+  - name: stg_dbt_seeds_activity_mapping
+    description: |
+      Staging model for activity mapping seed data. This model standardizes WHOOP
+      activity names to a unified naming convention and identifies which
+      activities are considered sport/exercise activities.
+    columns:
+      - name: original_activity_name
+        description: Original activity name from WHOOP.
+        data_tests:
+          - not_null
+
+      - name: aligned_activity_name
+        description: Unified activity name.
+        data_tests:
+          - not_null
+
+      - name: is_sport_exercise
+        description: Boolean flag indicating whether the activity is considered a sport/exercise activity (true) or a non-exercise activity like commuting, sauna, etc. (false).
+        data_tests:
+          - not_null
+
+  - name: stg_dbt_seeds_moon_data
+    description: Staging model for the moon phase seed data.
+    columns:
+      - name: date_day
+        description: Calendar date.
+        data_tests:
+          - not_null
+          - unique
+
+      - name: moon_phase
+        description: Named moon phase for this date (e.g. Full Moon, Waning Gibbous).
+
+      - name: illumination
+        description: Moon illumination percentage for this date.
+
+      - name: phase_cycle
+        description: Percent progress through the current lunar cycle.

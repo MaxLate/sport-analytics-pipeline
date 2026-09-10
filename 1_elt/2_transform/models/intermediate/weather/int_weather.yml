@@ -1,0 +1,16 @@
+models:
+  - name: int_weather_daily
+    description: Intermediate table for daily local weather with a couple of derived convenience flags.
+    materialized: table
+    columns:
+      - name: date_day
+        description: Calendar date.
+        tests:
+          - unique
+          - not_null
+
+      - name: had_precipitation
+        description: True if precipitation_sum_mm > 0 for the day.
+
+      - name: sunshine_duration_hours
+        description: Sunshine duration in hours, derived from sunshine_duration_seconds.

@@ -1,0 +1,72 @@
+sources:
+  - name: weather
+    database: source
+    description: Daily weather data for the configured location, sourced from Open-Meteo.
+    schema: weather
+
+    tables:
+      - name: weather_daily
+        description: One row per calendar day with daily weather aggregates from Open-Meteo (archive + forecast endpoints).
+
+models:
+  - name: stg_weather_daily
+    description: "Staging table for daily local weather data from Open-Meteo."
+    columns:
+      - name: date_day
+        description: Calendar date of the weather observation.
+        data_tests:
+          - not_null
+          - unique
+
+      - name: temperature_max_celsius
+        description: Maximum 2m air temperature for the day, in Celsius.
+
+      - name: temperature_min_celsius
+        description: Minimum 2m air temperature for the day, in Celsius.
+
+      - name: temperature_mean_celsius
+        description: Mean 2m air temperature for the day, in Celsius.
+
+      - name: apparent_temperature_mean_celsius
+        description: Mean apparent ("feels like") temperature for the day, in Celsius.
+
+      - name: precipitation_sum_mm
+        description: Total precipitation for the day, in millimeters.
+        data_tests:
+          - greater_than_or_equal_to:
+              arguments:
+                value: 0
+
+      - name: rain_sum_mm
+        description: Total rain for the day, in millimeters.
+
+      - name: snowfall_sum_cm
+        description: Total snowfall for the day, in centimeters.
+
+      - name: precipitation_hours
+        description: Number of hours with measurable precipitation.
+
+      - name: windspeed_max_kmh
+        description: Maximum wind speed for the day, in km/h.
+
+      - name: windgusts_max_kmh
+        description: Maximum wind gust for the day, in km/h.
+
+      - name: wind_direction_dominant_degrees
+        description: Dominant wind direction for the day, in degrees.
+
+      - name: sunshine_duration_seconds
+        description: Total sunshine duration for the day, in seconds.
+
+      - name: weathercode
+        description: WMO weather code summarizing the dominant weather condition for the day.
+
+      - name: et0_evapotranspiration_mm
+        description: Reference evapotranspiration (ET0 FAO) for the day, in millimeters.
+
+      - name: source_endpoint
+        description: Which Open-Meteo endpoint this row came from ('archive' or 'forecast').
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["archive", "forecast"]

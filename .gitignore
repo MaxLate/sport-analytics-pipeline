@@ -1,0 +1,29 @@
+config.yml
+.claude/
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# dont show raw data and database files
+0_data/database/
+0_data/raw/whoop/
+0_data/raw/weather/
+
+# dbt artifacts
+1_elt/2_transform/target/
+1_elt/2_transform/logs/
+1_elt/2_transform/dbt_packages/
+
+# Airflow runtime state
+3_orchestration/logs/
+3_orchestration/plugins/
+3_orchestration/.env

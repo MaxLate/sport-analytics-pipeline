@@ -1,0 +1,34 @@
+models:
+  - name: fct_weather_daily
+    description: |
+      Fact table with one row per calendar day of local weather (Open-Meteo).
+      Not yet surfaced in the dashboard frontend (planned as a future panel), but
+      available to join on date_day against any WHOOP fact table for analysis.
+    materialized: table
+    columns:
+      - name: date_day
+        description: Calendar date.
+        tests:
+          - unique
+          - not_null
+
+      - name: temperature_max_celsius
+        description: Maximum daily temperature in Celsius.
+
+      - name: temperature_min_celsius
+        description: Minimum daily temperature in Celsius.
+
+      - name: temperature_mean_celsius
+        description: Mean daily temperature in Celsius.
+
+      - name: precipitation_sum_mm
+        description: Total daily precipitation in millimeters.
+
+      - name: had_precipitation
+        description: True if any precipitation fell on this day.
+
+      - name: sunshine_duration_hours
+        description: Total sunshine duration for the day, in hours.
+
+      - name: weathercode
+        description: WMO weather code for the dominant condition of the day.
