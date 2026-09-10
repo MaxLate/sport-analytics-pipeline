@@ -5,9 +5,6 @@ models:
       through today), combining WHOOP recovery/sleep/workout metrics, moon phase
       (joined via fct_whoop_sleep_quality), and weather. This is the table the
       dashboard's overview/KPI endpoint reads from.
-
-      Weather columns are included but not yet surfaced in the dashboard frontend
-      (planned as a future panel).
     materialized: table
     columns:
       - name: date_day
@@ -50,7 +47,7 @@ models:
         description: Maximum activity_strain across all workouts on this day.
 
       - name: temperature_mean_celsius
-        description: Mean local temperature for this day (not yet used in the dashboard).
+        description: Mean local temperature for this day.
 
       - name: precipitation_sum_mm
-        description: Total local precipitation for this day (not yet used in the dashboard).
+        description: Total local precipitation for this day.

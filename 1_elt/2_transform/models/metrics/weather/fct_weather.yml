@@ -2,8 +2,8 @@ models:
   - name: fct_weather_daily
     description: |
       Fact table with one row per calendar day of local weather (Open-Meteo).
-      Not yet surfaced in the dashboard frontend (planned as a future panel), but
-      available to join on date_day against any WHOOP fact table for analysis.
+      Surfaced in the dashboard's Weather panel, and available to join on
+      date_day against any WHOOP fact table for analysis.
     materialized: table
     columns:
       - name: date_day

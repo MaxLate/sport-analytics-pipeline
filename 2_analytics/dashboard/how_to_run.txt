@@ -14,8 +14,7 @@ Introduction to run: dashboard
 
 Note:
 - Keep both servers running (API on port 8000, HTML on port 5500)
-- The HTML file fetches data from the API at http://127.0.0.1:8000/recovery, /sleep, /workouts
-- /weather is exposed but not yet used by the frontend (reserved for a future weather panel)
+- The HTML file fetches data from the API at http://127.0.0.1:8000/recovery, /sleep, /workouts, /weather
 - Make sure the database is at: 0_data/database/analytics.duckdb
 - Make sure these tables exist: whoop.fct_whoop_recovery, whoop.fct_whoop_sleeps, whoop.fct_whoop_sleep_quality, whoop.fct_whoop_workouts, weather.fct_weather_daily
 - DuckDB only allows one writer at a time — if Airflow is mid-run against analytics.duckdb, the API's read-only connections may briefly fail; just retry.

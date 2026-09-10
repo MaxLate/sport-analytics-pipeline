@@ -40,11 +40,11 @@ Recovery, sleep, and workout data via the WHOOP API (OAuth). One-time browser-ba
 
 ### Weather (Open-Meteo)
 
-Daily temperature, precipitation, wind, and sunshine data for the configured location via the free, keyless Open-Meteo API. A one-time historical backfill (`archive` endpoint) plus a daily incremental pull (`forecast` endpoint with a lookback window, so late corrections to recent days are picked up). Modeled and tested in dbt, exposed via `/weather` on the API — not yet shown in the dashboard frontend (planned as a future panel).
+Daily temperature, precipitation, wind, and sunshine data for the configured location via the free, keyless Open-Meteo API. A one-time historical backfill (`archive` endpoint) plus a daily incremental pull (`forecast` endpoint with a lookback window, so late corrections to recent days are picked up). Modeled and tested in dbt, exposed via `/weather` on the API and shown in the dashboard's Weather panel.
 
 ### Moon phase
 
-Static seed (`1_elt/2_transform/seeds/mooncalender.csv`, 2024-01-01 through 2026-12-31), joined onto WHOOP sleep data by date. Shown as an overlay in the dashboard's sleep panel (recovery/strain/workouts are not correlated against moon phase — that's WHOOP-only data with no obvious mechanism, so it's kept out of those panels to avoid implying a connection that isn't there).
+Static seed (`1_elt/2_transform/seeds/mooncalender.csv`, 2024-01-01 through 2026-12-31), joined onto WHOOP sleep data by date. The dashboard's sleep panel has a moon-phase overlay for this, currently commented out (recovery/strain/workouts are not correlated against moon phase — that's WHOOP-only data with no obvious mechanism, so it's kept out of those panels to avoid implying a connection that isn't there).
 
 ## 🛠️ Tech Stack
 

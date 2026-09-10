@@ -113,7 +113,7 @@ DuckDB allows exactly one writer connection to a given `.duckdb` file at a time.
 
 Seeds (`seeds/activity_mapping.csv`, `seeds/mooncalender.csv`) provide manual mapping/lookup data joined into intermediate models. `activity_mapping.csv` is filtered to WHOOP-only rows (the source project also had Strava rows). `mooncalender.csv` covers 2024-01-01 through 2026-12-31 as ported — it will need regenerating (e.g. via the `astral` package's `astral.moon.phase()`) before it runs out; not yet automated.
 
-Weather data (`fct_weather_daily`) is modeled and tested but **not yet wired into the dashboard frontend** — it's a deliberate follow-up, not a bug.
+Weather data (`fct_weather_daily`) is modeled, tested, and wired into the dashboard's Weather panel.
 
 Default materialization is `table`; staging is overridden to `view` (see `dbt_project.yml` `models:` block).
 
