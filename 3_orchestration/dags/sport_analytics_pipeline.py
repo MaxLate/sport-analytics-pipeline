@@ -19,7 +19,9 @@ PROJECT_DIR = "/opt/airflow/project"
 TRANSFORM_DIR = f"{PROJECT_DIR}/1_elt/2_transform"
 
 # profiles.yml lives next to dbt_project.yml, not in ~/.dbt — pass it explicitly.
-DBT_BASE = f"cd {TRANSFORM_DIR} && dbt --profiles-dir ."
+# Via env var rather than a `--profiles-dir` CLI flag: dbt 1.12 moved that flag
+# from global to per-subcommand, which broke `dbt --profiles-dir . <cmd>`.
+DBT_BASE = f"cd {TRANSFORM_DIR} && DBT_PROFILES_DIR=. dbt"
 
 default_args = {
     "owner": "sport-analytics",
@@ -73,9 +75,14 @@ with DAG(
         task_id="dbt_run_staging",
         bash_command=f"{DBT_BASE} run --select 'staging.*' --target source",
     )
+    # --indirect-selection cautious: default (eager) indirect selection pulls in
+    # any test referencing a selected node, even a relationships test spanning
+    # this layer and the next (e.g. int_whoop_sleep -> stg_dbt_seeds_moon_data),
+    # which then runs against this layer's --target and fails with a missing
+    # catalog error instead of its home layer's test step.
     dbt_test_staging = BashOperator(
         task_id="dbt_test_staging",
-        bash_command=f"{DBT_BASE} test --select 'staging.*' --target source",
+        bash_command=f"{DBT_BASE} test --select 'staging.*' --target source --indirect-selection cautious",
     )
 
     dbt_intermediate = BashOperator(
@@ -84,7 +91,7 @@ with DAG(
     )
     dbt_test_intermediate = BashOperator(
         task_id="dbt_test_intermediate",
-        bash_command=f"{DBT_BASE} test --select 'intermediate.*' --target transform",
+        bash_command=f"{DBT_BASE} test --select 'intermediate.*' --target transform --indirect-selection cautious",
     )
 
     dbt_metrics = BashOperator(
@@ -93,7 +100,7 @@ with DAG(
     )
     dbt_test_metrics = BashOperator(
         task_id="dbt_test_metrics",
-        bash_command=f"{DBT_BASE} test --select 'metrics.*' --target analytics",
+        bash_command=f"{DBT_BASE} test --select 'metrics.*' --target analytics --indirect-selection cautious",
     )
 
     load_group >> dbt_seed >> dbt_staging >> dbt_test_staging

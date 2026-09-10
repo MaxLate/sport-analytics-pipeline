@@ -176,7 +176,12 @@ models:
                     "walking",
                     "weightlifting",
                     "table-tennis",
-                    "cycling"
+                    "cycling",
+                    "trampoline",
+                    "weightlifting_msk",
+                    "reformer-pilates",
+                    "ultimate",
+                    "trail-running"
                   ]
 
           - name: activity_strain
