@@ -62,6 +62,7 @@ final as (
         enhanced.zone_three_milli,
         enhanced.zone_four_milli,
         enhanced.zone_five_milli,
+        activity_mapping_data.activity_id as activity_id,
         activity_mapping_data.aligned_activity_name as activity_name,
         activity_mapping_data.is_sport_exercise as is_sport_exercise
 

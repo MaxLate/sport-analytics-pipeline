@@ -5,8 +5,8 @@ models:
       This table provides a lookup/reference table for activity types and their categorization.
       
       **Contains:**
-      - **Activity identifier**: whoop_workout_activity_name_id (surrogate key for activity names)
-      - **Activity name**: Distinct activity names extracted from fct_whoop_workouts
+      - **Activity identifier**: whoop_workout_activity_name_id (stable ID from the activity mapping seed)
+      - **Activity name**: Distinct aligned activity names from the activity mapping seed
       - **Classification flag**: is_sport_exercise (boolean indicating if activity is considered sport/exercise vs. general activity)
       
       **Classification Logic:**
@@ -24,15 +24,21 @@ models:
       - Joining with fct_whoop_workouts for activity classification
       - Creating activity type hierarchies or groupings
       
-      **Note**: This dimension table is derived from fct_whoop_workouts and contains one row per unique activity_name. Use this for filtering or grouping workouts by activity type.
-      **Source**: Based on distinct activity names from WHOOP workout data in fct_whoop_workouts.
+      **Note**: One row per unique aligned activity_name. New aligned activities get the next unused integer in the seed; aliases reuse an existing ID.
+      **Source**: Distinct aligned activity names from the activity mapping seed.
     materialized: table
     columns:
       - name: whoop_workout_activity_name_id
-        description: Surrogate key (row number) uniquely identifying each activity name.
+        description: Stable integer ID for the aligned activity name, assigned in the activity mapping seed.
+        tests:
+          - unique
+          - not_null
 
       - name: activity_name
         description: Distinct name/type of the workout activity (e.g., "Running", "Cycling", "Weight Training", "Walking").
+        tests:
+          - unique
+          - not_null
 
       - name: is_sport_exercise
         description: Boolean flag indicating whether the activity is classified as sport/exercise (true) or general activity (false). Activities like Walking, Communting, Dance, and Table Tennis/Ping Pong are marked as false.

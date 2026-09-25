@@ -204,6 +204,9 @@ models:
       - name: zone_five_milli
         description: Time spent in heart rate zone 5 (VO2 max/anaerobic) in milliseconds.
 
+      - name: activity_id
+        description: Stable integer ID for the aligned activity name, sourced from the activity mapping seed.
+
       - name: activity_name
         description: Unified activity name from the activity mapping, aligned across different data sources.
 

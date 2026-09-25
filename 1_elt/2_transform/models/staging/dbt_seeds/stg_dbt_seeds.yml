@@ -24,10 +24,16 @@ models:
       activity names to a unified naming convention and identifies which
       activities are considered sport/exercise activities.
     columns:
+      - name: activity_id
+        description: Stable integer ID for the aligned activity name. Multiple WHOOP originals that map to the same aligned name share this ID. Assign the next unused integer when adding a new aligned activity; reuse an existing ID when adding an alias.
+        data_tests:
+          - not_null
+
       - name: original_activity_name
         description: Original activity name from WHOOP.
         data_tests:
           - not_null
+          - unique
 
       - name: aligned_activity_name
         description: Unified activity name.
