@@ -30,32 +30,43 @@ enhanced as (
         wake_onset,
 
 
-        -- sleep duration
-        asleep_duration as asleep_duration_minutes,
-        asleep_duration / 60 as asleep_duration_hours,
+        -- sleep duration: sum of sleep stages, converted from milliseconds to minutes
+        (
+            light_sleep_time_milli + slow_wave_sleep_time_milli + rem_sleep_time_milli
+        ) / 60000.0 :: decimal(10, 2) as asleep_duration_minutes,
+        asleep_duration_minutes / 60 as asleep_duration_hours,
 
-        in_bed_duration as in_bed_duration_minutes,
-        in_bed_duration / 60 as in_bed_duration_hours,
+        in_bed_time_milli / 60000.0 :: decimal(10, 2) as in_bed_duration_minutes,
+        in_bed_duration_minutes / 60 as in_bed_duration_hours,
 
-        light_sleep_duration as light_sleep_duration_minutes,
-        light_sleep_duration / 60 as light_sleep_duration_hours,
+        light_sleep_time_milli / 60000.0 :: decimal(10, 2) as light_sleep_duration_minutes,
+        light_sleep_duration_minutes / 60 as light_sleep_duration_hours,
 
-        deep_sleep_duration as deep_sleep_duration_minutes,
-        deep_sleep_duration / 60 as deep_sleep_duration_hours,
+        slow_wave_sleep_time_milli / 60000.0 :: decimal(10, 2) as deep_sleep_duration_minutes,
+        deep_sleep_duration_minutes / 60 as deep_sleep_duration_hours,
 
-        rem_duration as rem_duration_minutes,
-        rem_duration / 60 as rem_duration_hours,
+        rem_sleep_time_milli / 60000.0 :: decimal(10, 2) as rem_duration_minutes,
+        rem_duration_minutes / 60 as rem_duration_hours,
 
-        awake_duration as awake_duration_minutes,
-        awake_duration / 60 as awake_duration_hours,
+        awake_time_milli / 60000.0 :: decimal(10, 2) as awake_duration_minutes,
+        awake_duration_minutes / 60 as awake_duration_hours,
 
         -- sleep quality
         sleep_performance,
         respiratory_rate,
-        sleep_need as sleep_need_minutes,
-        sleep_need / 60 as sleep_need_hours,
-        sleep_debt as sleep_debt_minutes,
-        sleep_debt / 60 as sleep_debt_hours,
+
+        -- sleep need: baseline + sleep debt + recent strain - recent nap, converted to minutes
+        (
+            sleep_need_baseline_milli
+            + sleep_need_from_sleep_debt_milli
+            + sleep_need_from_recent_strain_milli
+            - sleep_need_from_recent_nap_milli
+        ) / 60000.0 :: decimal(10, 2) as sleep_need_minutes,
+        sleep_need_minutes / 60 as sleep_need_hours,
+
+        sleep_need_from_sleep_debt_milli / 60000.0 :: decimal(10, 2) as sleep_debt_minutes,
+        sleep_debt_minutes / 60 as sleep_debt_hours,
+
         sleep_efficiency,
         sleep_consistency,
         nap

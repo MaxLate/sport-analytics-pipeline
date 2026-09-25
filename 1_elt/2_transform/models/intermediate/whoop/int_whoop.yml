@@ -36,29 +36,85 @@ models:
         tests:
           - not_null
 
+      - name: asleep_duration_minutes
+        description: Total time spent asleep during this sleep episode, in minutes, summed from light, slow-wave, and REM sleep durations (stg_whoop_sleep's *_time_milli columns) and converted from milliseconds.
+        tests:
+          - greater_than_or_equal_to:
+              arguments:
+                value: 0
+
       - name: asleep_duration_hours
-        description: Total hours spent actually asleep, calculated from asleep_duration (divided by 60).
+        description: Total hours spent actually asleep, calculated from asleep_duration_minutes (divided by 60).
+
+      - name: in_bed_duration_minutes
+        description: Total time spent in bed during this sleep episode, in minutes, converted from stg_whoop_sleep.in_bed_time_milli.
+        tests:
+          - greater_than_or_equal_to:
+              arguments:
+                value: 0
 
       - name: in_bed_duration_hours
-        description: Total hours spent in bed, calculated from in_bed_duration (divided by 60).
+        description: Total hours spent in bed, calculated from in_bed_duration_minutes (divided by 60).
+
+      - name: light_sleep_duration_minutes
+        description: Time spent in light sleep during this sleep episode, in minutes, converted from stg_whoop_sleep.light_sleep_time_milli.
+        tests:
+          - greater_than_or_equal_to:
+              arguments:
+                value: 0
 
       - name: light_sleep_duration_hours
-        description: Duration of light sleep stage in hours, calculated from light_sleep_duration (divided by 60).
+        description: Duration of light sleep stage in hours, calculated from light_sleep_duration_minutes (divided by 60).
+
+      - name: deep_sleep_duration_minutes
+        description: Time spent in slow-wave (deep) sleep during this sleep episode, in minutes, converted from stg_whoop_sleep.slow_wave_sleep_time_milli.
+        tests:
+          - greater_than_or_equal_to:
+              arguments:
+                value: 0
 
       - name: deep_sleep_duration_hours
-        description: Duration of deep sleep stage in hours, calculated from deep_sleep_duration (divided by 60).
+        description: Duration of deep sleep stage in hours, calculated from deep_sleep_duration_minutes (divided by 60).
+
+      - name: rem_duration_minutes
+        description: Time spent in REM sleep during this sleep episode, in minutes, converted from stg_whoop_sleep.rem_sleep_time_milli.
+        tests:
+          - greater_than_or_equal_to:
+              arguments:
+                value: 0
 
       - name: rem_duration_hours
-        description: Duration of REM sleep stage in hours, calculated from rem_duration (divided by 60).
+        description: Duration of REM sleep stage in hours, calculated from rem_duration_minutes (divided by 60).
+
+      - name: awake_duration_minutes
+        description: Time spent awake while in bed during this sleep episode, in minutes, converted from stg_whoop_sleep.awake_time_milli.
+        tests:
+          - greater_than_or_equal_to:
+              arguments:
+                value: 0
 
       - name: awake_duration_hours
-        description: Duration of awake time during the sleep period in hours, calculated from awake_duration (divided by 60).
+        description: Duration of awake time during the sleep period in hours, calculated from awake_duration_minutes (divided by 60).
+
+      - name: sleep_need_minutes
+        description: Total amount of sleep WHOOP determines the member needs for the associated physiological cycle, in minutes, combining baseline need, recent strain, prior sleep debt, and naps (stg_whoop_sleep's sleep_need_*_milli columns).
+        tests:
+          - greater_than_or_equal_to:
+              arguments:
+                value: 0
 
       - name: sleep_need_hours
-        description: WHOOP-calculated amount of required sleep in hours, calculated from sleep_need (divided by 60).
+        description: WHOOP-calculated amount of required sleep in hours, calculated from sleep_need_minutes (divided by 60).
+
+      - name: sleep_debt_minutes
+        description: Portion of the member's sleep need that comes specifically from previously accumulated sleep debt, in minutes, converted from stg_whoop_sleep.sleep_need_from_sleep_debt_milli.
+        tests:
+          - greater_than_or_equal_to:
+              arguments:
+                value: 0
 
       - name: sleep_debt_hours
-        description: Portion of sleep need from accumulated sleep debt in hours, calculated from sleep_debt (divided by 60).
+        description: Portion of sleep need from accumulated sleep debt in hours, calculated from sleep_debt_minutes (divided by 60).
 
       - name: moon_phase
         description: Moon phase name for the sleep date, joined from moon data (stg_dbt_seeds_moon_data).
