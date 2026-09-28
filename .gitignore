@@ -23,6 +23,10 @@ __pycache__/
 1_elt/2_transform/logs/
 1_elt/2_transform/dbt_packages/
 
+# Brainstorming companion mockups and local worktrees
+.superpowers/
+.worktrees/
+
 # Airflow runtime state
 3_orchestration/logs/
 3_orchestration/plugins/
