@@ -1,13 +1,13 @@
-{% test end_date_alert(model) %}
+{% test end_date_alert(model, column_name="date_day") %}
 
--- Fails when today's date is >= your model's end_date expression (4 years from now)
+-- Fails when the model's latest date is already in the past (today is no longer covered).
 with params as (
-    select date_add(current_date, INTERVAL 4 YEAR) as end_date
+    select max({{ column_name }})::date as end_date
+    from {{ model }}
 )
 
 select 1
 from params
-where current_date >= end_date
+where current_date > end_date
 
 {% endtest %}
-

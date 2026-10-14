@@ -11,4 +11,4 @@ weather:
   longitude: 0.0
   timezone: "Europe/Berlin"
 database:
-  path: 0_data/database/source.duckdb
+  path: 0_data/database/warehouse.duckdb

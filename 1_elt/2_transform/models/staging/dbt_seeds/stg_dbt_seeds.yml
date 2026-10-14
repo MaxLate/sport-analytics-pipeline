@@ -1,22 +1,3 @@
-sources:
-
-  - name: mooncalender
-    description: Data of the moon phases and illumination of each day.
-    database: source
-    schema: seeds
-
-  - name: activity_mapping
-    description: Mapping of WHOOP activity names to a unified activity taxonomy.
-    database: source
-    schema: seeds
-
-tables:
-    - name: mooncalender
-      description: Data of the moon phases and illumination of each day.
-
-    - name: activity_mapping
-      description: Mapping of WHOOP activity names to a unified activity taxonomy.
-
 models:
   - name: stg_dbt_seeds_activity_mapping
     description: |
@@ -47,6 +28,18 @@ models:
 
   - name: stg_dbt_seeds_moon_data
     description: Staging model for the moon phase seed data.
+    data_tests:
+      - end_date_warning:
+          arguments:
+            column_name: date_day
+            warn_days: 30
+          config:
+            severity: warn
+      - end_date_alert:
+          arguments:
+            column_name: date_day
+          config:
+            severity: error
     columns:
       - name: date_day
         description: Calendar date.

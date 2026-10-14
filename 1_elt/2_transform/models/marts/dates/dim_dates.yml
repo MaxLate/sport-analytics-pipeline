@@ -28,10 +28,3 @@ models:
         description: Whether the date is a weekend.
       - name: day_of_year
         description: Day of the year.
-    tests:
-      - end_date_warning:
-          config:
-            severity: warn
-      - end_date_alert:
-          config:
-            severity: error

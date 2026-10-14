@@ -5,18 +5,24 @@
 ##### 3. Only inserts new rows that don't already exist.                    #####
 #################################################################################
 
+import json
+import os
+import re
+from datetime import datetime
+from pathlib import Path
+
 import duckdb
 import pandas as pd
-import json
-from pathlib import Path
-from datetime import datetime
-import re
 
 # Get project root directory (4 levels up: whoop -> 1_load -> 1_elt -> project_root)
 project_root = Path(__file__).parent.parent.parent.parent
 data_dir = project_root / "0_data" / "raw" / "whoop"
-db_dir = project_root / "0_data" / "database"
-db_path = db_dir / "source.duckdb"
+db_path = Path(
+    os.environ.get(
+        "WAREHOUSE_PATH", project_root / "0_data" / "database" / "warehouse.duckdb"
+    )
+)
+db_dir = db_path.parent
 
 
 def get_newest_file_by_prefix(prefix: str) -> Path | None:
@@ -59,7 +65,7 @@ def get_newest_file_by_prefix(prefix: str) -> Path | None:
 
     # Delete older files
     deleted_count = 0
-    for date, file_path in matching_files[1:]:
+    for _date, file_path in matching_files[1:]:
         try:
             file_path.unlink()
             deleted_count += 1
@@ -220,7 +226,7 @@ if __name__ == "__main__":
 
     if files["workouts"]:
         try:
-            with open(files["workouts"], "r") as f:
+            with open(files["workouts"]) as f:
                 workouts_data = json.load(f)
             print(
                 f"  ✅ Loaded {len(workouts_data)} workouts from {files['workouts'].name}"
@@ -230,7 +236,7 @@ if __name__ == "__main__":
 
     if files["sleeps"]:
         try:
-            with open(files["sleeps"], "r") as f:
+            with open(files["sleeps"]) as f:
                 sleeps_data = json.load(f)
             print(f"  ✅ Loaded {len(sleeps_data)} sleeps from {files['sleeps'].name}")
         except Exception as e:
@@ -238,7 +244,7 @@ if __name__ == "__main__":
 
     if files["cycles"]:
         try:
-            with open(files["cycles"], "r") as f:
+            with open(files["cycles"]) as f:
                 cycles_data = json.load(f)
             print(f"  ✅ Loaded {len(cycles_data)} cycles from {files['cycles'].name}")
         except Exception as e:
@@ -246,7 +252,7 @@ if __name__ == "__main__":
 
     if files["recoveries"]:
         try:
-            with open(files["recoveries"], "r") as f:
+            with open(files["recoveries"]) as f:
                 recoveries_data = json.load(f)
             print(
                 f"  ✅ Loaded {len(recoveries_data)} recoveries from {files['recoveries'].name}"

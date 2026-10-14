@@ -6,18 +6,24 @@
 ##### insert the new batch) instead of skipping existing rows.            #####
 #################################################################################
 
+import json
+import os
+import re
+from datetime import datetime
+from pathlib import Path
+
 import duckdb
 import pandas as pd
-import json
-from pathlib import Path
-from datetime import datetime
-import re
 
 # Get project root directory (4 levels up: weather -> 1_load -> 1_elt -> project_root)
 project_root = Path(__file__).parent.parent.parent.parent
 data_dir = project_root / "0_data" / "raw" / "weather"
-db_dir = project_root / "0_data" / "database"
-db_path = db_dir / "source.duckdb"
+db_path = Path(
+    os.environ.get(
+        "WAREHOUSE_PATH", project_root / "0_data" / "database" / "warehouse.duckdb"
+    )
+)
+db_dir = db_path.parent
 
 TABLE_NAME = "weather.weather_daily"
 
@@ -50,7 +56,7 @@ def get_newest_file_by_prefix(prefix: str) -> Path | None:
     newest_date, newest_file = matching_files[0]
 
     deleted_count = 0
-    for date, file_path in matching_files[1:]:
+    for _date, file_path in matching_files[1:]:
         try:
             file_path.unlink()
             deleted_count += 1
@@ -131,14 +137,14 @@ if __name__ == "__main__":
     frames = []
 
     if archive_file:
-        with open(archive_file, "r") as f:
+        with open(archive_file) as f:
             archive_payload = json.load(f)
         archive_df = payload_to_dataframe(archive_payload, "archive")
         print(f"  Loaded {len(archive_df)} days from {archive_file.name}")
         frames.append(archive_df)
 
     if forecast_file:
-        with open(forecast_file, "r") as f:
+        with open(forecast_file) as f:
             forecast_payload = json.load(f)
         forecast_df = payload_to_dataframe(forecast_payload, "forecast")
         print(f"  Loaded {len(forecast_df)} days from {forecast_file.name}")

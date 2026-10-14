@@ -4,8 +4,9 @@ Configuration Loader
 Loads configuration from config.yml
 """
 
-import yaml
 from pathlib import Path
+
+import yaml
 
 
 class Config:
@@ -23,7 +24,7 @@ class Config:
                 f"Please copy config_sample.yml to config.yml and add your credentials."
             )
 
-        with open(self.config_path, "r") as f:
+        with open(self.config_path) as f:
             return yaml.safe_load(f)
 
     def get(self, *keys, default=None):
@@ -70,7 +71,7 @@ class Config:
 
     @property
     def database_path(self):
-        return self.get("database", "path", default="0_data/database/source.duckdb")
+        return self.get("database", "path", default="0_data/database/warehouse.duckdb")
 
     @property
     def raw_data_path(self):

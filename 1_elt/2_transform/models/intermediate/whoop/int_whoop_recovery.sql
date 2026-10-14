@@ -20,11 +20,11 @@ enhanced as (
             else whoop_sleep_data.sleep_onset :: date
         end as date_day,
 
-        whoop_recovery_data.score.recovery_score,
-        whoop_recovery_data.score.resting_heart_rate,
-        whoop_recovery_data.score.hrv_rmssd_milli,
-        whoop_recovery_data.score.spo2_percentage,
-        whoop_recovery_data.score.skin_temp_celsius
+        whoop_recovery_data.recovery_score,
+        whoop_recovery_data.resting_heart_rate,
+        whoop_recovery_data.hrv_rmssd_milli,
+        whoop_recovery_data.spo2_percentage,
+        whoop_recovery_data.skin_temp_celsius
 
     from whoop_recovery_data
     left join whoop_sleep_data on whoop_recovery_data.whoop_sleep_uuid = whoop_sleep_data.sleep_id

@@ -55,12 +55,13 @@ enhanced as (
         sleep_performance,
         respiratory_rate,
 
-        -- sleep need: baseline + sleep debt + recent strain - recent nap, converted to minutes
+        -- sleep need: baseline + sleep debt + recent strain + recent nap, converted to minutes
+        -- (WHOOP reports the nap component as a non-positive reduction)
         (
             sleep_need_baseline_milli
             + sleep_need_from_sleep_debt_milli
             + sleep_need_from_recent_strain_milli
-            - sleep_need_from_recent_nap_milli
+            + sleep_need_from_recent_nap_milli
         ) / 60000.0 :: decimal(10, 2) as sleep_need_minutes,
         sleep_need_minutes / 60 as sleep_need_hours,
 

@@ -1,6 +1,5 @@
 sources:
   - name: weather
-    database: source
     description: Daily weather data for the configured location, sourced from Open-Meteo.
     schema: weather
 
