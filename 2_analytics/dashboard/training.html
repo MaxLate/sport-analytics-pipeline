@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Sport Analytics — Training</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<link rel="stylesheet" href="dashboard.css" />
+
+</head>
+
+<body>
+
+<h1>Training</h1>
+<h3>Training hours, heart rate and strain by activity</h3>
+
+<nav class="topNav" aria-label="Dashboard pages">
+    <a href="index.html">Overview</a>
+    <a href="sleep.html">Sleep</a>
+    <a class="active" href="training.html">Training</a>
+</nav>
+
+<div class="pageControls">
+    <div class="granularityToggle" id="periodToggle">
+        <button class="toggleBtn active" data-period="30d">30d</button>
+        <button class="toggleBtn" data-period="90d">90d</button>
+        <button class="toggleBtn" data-period="1y">1y</button>
+        <button class="toggleBtn" data-period="all">All</button>
+    </div>
+    <label><input id="includeAllActivities" type="checkbox"> Include all activities</label>
+    <p id="pageStatus"></p>
+</div>
+
+<div class="heroRow">
+    <div class="tile">
+        <p class="label">Hours</p>
+        <p class="value" id="trainingHoursValue">–</p>
+    </div>
+    <div class="tile">
+        <p class="label">Sessions</p>
+        <p class="value" id="trainingSessionsValue">–</p>
+    </div>
+    <div class="tile">
+        <p class="label">Avg strain</p>
+        <p class="value" id="trainingStrainValue">–</p>
+    </div>
+    <div class="tile">
+        <p class="label">Peak heart rate</p>
+        <p class="value" id="trainingPeakHrValue">–</p>
+    </div>
+</div>
+
+<div class="panel">
+    <h2 class="sectionTitle"><span>Training hours</span><span class="label" id="hoursCaption"></span></h2>
+    <canvas id="hoursChart" class="chart-box"></canvas>
+</div>
+
+<div class="panelRow">
+    <div class="panel">
+        <h2 class="sectionTitle"><span>Heart rate by activity</span></h2>
+        <canvas id="heartRateChart" class="chart-box"></canvas>
+    </div>
+    <div class="panel">
+        <h2 class="sectionTitle"><span>Avg strain by activity</span></h2>
+        <canvas id="strainBySportChart" class="chart-box"></canvas>
+    </div>
+</div>
+
+<div class="panel">
+    <h2 class="sectionTitle"><span>Recent sessions</span></h2>
+    <div class="tableScroll">
+    <table class="dataTable" id="recentSessions">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Activity</th>
+                <th>Duration</th>
+                <th>Strain</th>
+                <th>Avg HR</th>
+                <th>Max HR</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="dashboard-utils.js"></script>
+<script src="dashboard-page.js"></script>
+
+<script>
+const charts = {};
+const periodToggle = document.getElementById("periodToggle");
+const includeAllActivities = document.getElementById("includeAllActivities");
+let workoutRecords = [];
+
+function drawChart(canvasId, config) {
+    if (charts[canvasId]) charts[canvasId].destroy();
+    charts[canvasId] = new Chart(document.getElementById(canvasId), config);
+}
+
+function axis(title, extra = {}) {
+    return { grid: { color: GRID_COLOR }, title: { display: true, text: title }, ...extra };
+}
+
+function trainingBucket(period) {
+    if (period === "30d") return "day";
+    if (period === "all") return "month";
+    return "week";
+}
+
+function bucketLabel(bucketStart, bucket) {
+    if (bucket === "month") {
+        return new Date(`${bucketStart}T00:00:00Z`).toLocaleDateString(undefined, { month: "short", year: "2-digit", timeZone: "UTC" });
+    }
+    const label = new Date(`${bucketStart}T00:00:00Z`).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+    return bucket === "week" ? `Wk of ${label}` : label;
+}
+
+function renderStackedHours(stacked, bucket) {
+    const names = stacked.length ? stacked[0].series.map((entry) => entry.activity_name) : [];
+    hoursCaption.textContent = { day: "per day", week: "per week", month: "per month" }[bucket];
+    drawChart("hoursChart", {
+        type: "bar",
+        data: {
+            labels: stacked.map((row) => bucketLabel(row.bucketStart, bucket)),
+            datasets: names.map((name, index) => ({
+                label: name,
+                data: stacked.map((row) => row.series[index].hours),
+                backgroundColor: name === "Other" ? OTHER_COLOR : CATEGORICAL[index % CATEGORICAL.length],
+            })),
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: "bottom", labels: { color: TICK_COLOR, boxWidth: 12 } },
+                tooltip: {
+                    ...TOOLTIP_STYLE,
+                    filter: (item) => item.parsed.y > 0,
+                    callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} h` },
+                },
+            },
+            scales: {
+                x: axis("Period", { stacked: true, ticks: { autoSkip: true, maxTicksLimit: 12 } }),
+                y: axis("Hours", { stacked: true, beginAtZero: true }),
+            },
+        },
+    });
+}
+
+function sportTooltip(sports, valueText) {
+    return {
+        ...TOOLTIP_STYLE,
+        callbacks: {
+            title: (items) => sports[items[0].dataIndex].activity_name,
+            label: (ctx) => valueText(ctx),
+            afterBody: (items) => {
+                const sport = sports[items[0].dataIndex];
+                return `${sport.sessions} sessions · ${sport.hours.toFixed(1)} h total`;
+            },
+        },
+    };
+}
+
+function renderSportCharts(sports) {
+    const labels = sports.map((sport) => sport.activity_name);
+    drawChart("heartRateChart", {
+        type: "bar",
+        data: {
+            labels,
+            datasets: [
+                { label: "Avg HR", data: sports.map((sport) => sport.averageHeartRate), backgroundColor: COLOR_STRAIN },
+                { label: "Max HR", data: sports.map((sport) => sport.maxHeartRate), backgroundColor: COLOR_STRAIN + "55" },
+            ],
+        },
+        options: {
+            indexAxis: "y",
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: "bottom", labels: { color: TICK_COLOR, boxWidth: 12 } },
+                tooltip: sportTooltip(sports, (ctx) => `${ctx.dataset.label}: ${Math.round(ctx.parsed.x)} bpm`),
+            },
+            scales: { x: axis("Heart rate (bpm)", { beginAtZero: true }), y: axis("Activity") },
+        },
+    });
+    drawChart("strainBySportChart", {
+        type: "bar",
+        data: {
+            labels,
+            datasets: [{ label: "Avg strain", data: sports.map((sport) => sport.averageStrain), backgroundColor: COLOR_RECOVERY }],
+        },
+        options: {
+            indexAxis: "y",
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: sportTooltip(sports, (ctx) => `Avg strain: ${ctx.parsed.x.toFixed(1)}`),
+            },
+            scales: { x: axis("WHOOP strain (0–21)", { beginAtZero: true }), y: axis("Activity") },
+        },
+    });
+}
+
+function renderRecentRows(rows) {
+    const tbody = document.querySelector("#recentSessions tbody");
+    tbody.innerHTML = "";
+    rows.forEach((row) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${fmtDate(calendarDate(row.date_day))}</td>
+            <td>${row.activity_name ?? "Unknown"}</td>
+            <td class="num">${Math.round(row.duration_minutes)} min</td>
+            <td class="num">${row.activity_strain?.toFixed(1) ?? "–"}</td>
+            <td class="num">${row.average_heart_rate ? Math.round(row.average_heart_rate) + " bpm" : "–"}</td>
+            <td class="num">${row.max_heart_rate ? Math.round(row.max_heart_rate) + " bpm" : "–"}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function renderTiles(summary) {
+    trainingHoursValue.textContent = `${summary.hours.toFixed(1)} h`;
+    trainingSessionsValue.textContent = summary.sessions;
+    trainingStrainValue.textContent = summary.averageStrain === null ? "–" : summary.averageStrain.toFixed(1);
+    trainingPeakHrValue.textContent = summary.peakHeartRate === null ? "–" : `${Math.round(summary.peakHeartRate)} bpm`;
+}
+
+function clearPage() {
+    Object.values(charts).forEach((chart) => chart.destroy());
+    Object.keys(charts).forEach((key) => delete charts[key]);
+    for (const id of ["trainingHoursValue", "trainingSessionsValue", "trainingStrainValue", "trainingPeakHrValue"]) {
+        document.getElementById(id).textContent = "–";
+    }
+    hoursCaption.textContent = "";
+    renderRecentRows([]);
+}
+
+function renderTraining(records, period, includeAll) {
+    const reference = records.map((record) => calendarDate(record.date_day)).sort().at(-1);
+    const selected = reference
+        ? filterTrainingActivities(filterByPeriod(records, "date_day", period, reference), includeAll)
+        : [];
+    if (!selected.length) {
+        clearPage();
+        pageStatus.textContent = "No observations exist for this period.";
+        return;
+    }
+    pageStatus.textContent = "";
+    const bucket = trainingBucket(period);
+    const range = {
+        start: periodStart(period, reference) ?? selected.map((record) => calendarDate(record.date_day)).sort()[0],
+        end: reference,
+    };
+    renderTiles(summarizeTraining(selected));
+    renderStackedHours(stackTrainingHours(selected, bucket, range), bucket);
+    renderSportCharts(compareSports(selected));
+    renderRecentRows(recentSessions(selected, 20));
+}
+
+function rerender() {
+    renderTraining(workoutRecords, activePeriod(periodToggle), includeAllActivities.checked);
+}
+
+wirePeriodToggle(periodToggle, rerender);
+includeAllActivities.addEventListener("change", rerender);
+
+fetchJson("/workouts").then((records) => {
+    workoutRecords = records;
+    rerender();
+}).catch(showLoadError);
+</script>
+
+</body>
+</html>

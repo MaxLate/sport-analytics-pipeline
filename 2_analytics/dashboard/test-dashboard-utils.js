@@ -21,6 +21,7 @@ const {
   filterTrainingActivities,
   summarizeTraining,
   stackTrainingHours,
+  periodStart,
   compareSports,
   recentSessions,
 } = require("./dashboard-utils.js");
@@ -353,6 +354,32 @@ test("stackTrainingHours uses the first of the month as the month bucket", () =>
     { date_day: "2026-10-01T00:00:00", activity_name: "Run", duration_minutes: 60 },
   ], "month");
   assert.deepEqual(stacked.map((bucket) => bucket.bucketStart), ["2026-09-01", "2026-10-01"]);
+});
+
+test("stackTrainingHours fills empty buckets across the given range", () => {
+  const stacked = stackTrainingHours([
+    { date_day: "2026-09-02", activity_name: "Run", duration_minutes: 60 },
+  ], "day", { start: "2026-09-01", end: "2026-09-04" });
+  assert.deepEqual(stacked.map((bucket) => bucket.bucketStart), [
+    "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04",
+  ]);
+  assert.deepEqual(stacked.map((bucket) => bucket.series[0].hours), [0, 1, 0, 0]);
+});
+
+test("stackTrainingHours fills weeks from the Monday of the range start", () => {
+  const stacked = stackTrainingHours([
+    { date_day: "2026-09-24", activity_name: "Run", duration_minutes: 60 },
+  ], "week", { start: "2026-09-10", end: "2026-09-30" });
+  assert.deepEqual(stacked.map((bucket) => bucket.bucketStart), [
+    "2026-09-07", "2026-09-14", "2026-09-21", "2026-09-28",
+  ]);
+});
+
+test("periodStart matches the inclusive bounds of filterByPeriod", () => {
+  assert.equal(periodStart("30d", "2026-09-30"), "2026-09-01");
+  assert.equal(periodStart("1y", "2026-09-30"), "2025-09-30");
+  assert.equal(periodStart("all", "2026-09-30"), null);
+  assert.throws(() => periodStart("2w", "2026-09-30"), /Unknown period/);
 });
 
 test("compareSports orders by total duration", () => {

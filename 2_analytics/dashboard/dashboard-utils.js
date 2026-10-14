@@ -156,16 +156,22 @@ function shiftUtcDate(isoDate, { days = 0, years = 0 }) {
   return date.toISOString().slice(0, 10);
 }
 
-function filterByPeriod(records, dateField, period, referenceDateInclusive) {
+// First included date of the period, or null for "all".
+function periodStart(period, referenceDateInclusive) {
   const reference = calendarDate(referenceDateInclusive);
   const starts = {
-    "30d": shiftUtcDate(reference, { days: -29 }),
-    "90d": shiftUtcDate(reference, { days: -89 }),
-    "1y": shiftUtcDate(reference, { years: -1 }),
-    all: null,
+    "30d": () => shiftUtcDate(reference, { days: -29 }),
+    "90d": () => shiftUtcDate(reference, { days: -89 }),
+    "1y": () => shiftUtcDate(reference, { years: -1 }),
+    all: () => null,
   };
   if (!Object.hasOwn(starts, period)) throw new Error(`Unknown period: ${period}`);
-  const start = starts[period];
+  return starts[period]();
+}
+
+function filterByPeriod(records, dateField, period, referenceDateInclusive) {
+  const reference = calendarDate(referenceDateInclusive);
+  const start = periodStart(period, reference);
   return records.filter((record) => {
     const date = calendarDate(record[dateField]);
     return date <= reference && (start === null || date >= start);
@@ -268,7 +274,16 @@ function bucketStartFor(dateValue, bucket) {
   throw new Error(`Unknown bucket: ${bucket}`);
 }
 
-function stackTrainingHours(records, bucket) {
+function nextBucketStart(bucketStart, bucket) {
+  if (bucket === "day") return shiftUtcDate(bucketStart, { days: 1 });
+  if (bucket === "week") return shiftUtcDate(bucketStart, { days: 7 });
+  const date = new Date(`${bucketStart}T00:00:00Z`);
+  date.setUTCMonth(date.getUTCMonth() + 1);
+  return toIsoDate(date);
+}
+
+// With range {start, end}, every bucket in it is returned, including empty ones.
+function stackTrainingHours(records, bucket, range = null) {
   const totals = new Map();
   for (const record of records) {
     totals.set(record.activity_name, (totals.get(record.activity_name) || 0) + (record.duration_minutes || 0));
@@ -283,6 +298,12 @@ function stackTrainingHours(records, bucket) {
     if (!buckets.has(bucketStart)) buckets.set(bucketStart, new Map());
     const series = buckets.get(bucketStart);
     series.set(activityName, (series.get(activityName) || 0) + (record.duration_minutes || 0) / 60);
+  }
+  if (range) {
+    const last = bucketStartFor(range.end, bucket);
+    for (let start = bucketStartFor(range.start, bucket); start <= last; start = nextBucketStart(start, bucket)) {
+      if (!buckets.has(start)) buckets.set(start, new Map());
+    }
   }
   const names = [...namedList, ...(ranked.length > TRAINING_SERIES_LIMIT ? ["Other"] : [])];
   return [...buckets.keys()].sort().map((bucketStart) => ({
@@ -342,6 +363,7 @@ if (typeof module !== "undefined" && module.exports) {
     filterTrainingActivities,
     summarizeTraining,
     stackTrainingHours,
+    periodStart,
     compareSports,
     recentSessions,
   };
