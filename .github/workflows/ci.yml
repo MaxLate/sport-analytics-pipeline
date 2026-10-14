@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pipeline:
+    name: Lint, dbt build on sample data, tests
+    runs-on: ubuntu-latest
+    env:
+      WAREHOUSE_PATH: ${{ github.workspace }}/0_data/database/ci.duckdb
+      DBT_PROFILES_DIR: .
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Lint Python (ruff)
+        run: uv run ruff check .
+
+      - name: Lint SQL (sqlfluff)
+        working-directory: 1_elt/2_transform
+        run: uv run sqlfluff lint models
+
+      - name: Load sample data
+        run: uv run python 1_elt/1_load/sample/load_sample_data.py
+
+      - name: dbt build (seeds, models, tests)
+        working-directory: 1_elt/2_transform
+        run: |
+          uv run dbt deps
+          uv run dbt build
+
+      - name: Python tests (incl. semantic layer contract against the built marts)
+        run: uv run pytest
+
+      - name: Dashboard JS tests
+        run: node 2_analytics/dashboard/test-dashboard-utils.js
+
+  airflow-image:
+    name: Airflow image builds and DAGs import
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: 3_orchestration
+          build-contexts: dbt_project=1_elt/2_transform
+          load: true
+          tags: sport-analytics-airflow:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Import DAGs (live and sample mode)
+        run: |
+          for mode in live sample; do
+            docker run --rm -e PIPELINE_MODE=$mode \
+              -v "$PWD/3_orchestration/dags:/opt/airflow/dags:ro" \
+              -v "$PWD/3_orchestration/check_dags.py:/check_dags.py:ro" \
+              sport-analytics-airflow:ci python /check_dags.py
+          done
