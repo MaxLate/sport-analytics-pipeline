@@ -2,12 +2,17 @@ x-airflow-common: &airflow-common
   build:
     context: .
     dockerfile: Dockerfile
+    additional_contexts:
+      dbt_project: ../1_elt/2_transform
   environment: &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__CORE__DEFAULT_TIMEZONE: Europe/Berlin
-    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "false"
+    # live: extract from WHOOP/Open-Meteo into warehouse.duckdb (needs config.yml).
+    # sample: synthetic data into demo.duckdb, no credentials needed.
+    PIPELINE_MODE: ${PIPELINE_MODE:-live}
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs

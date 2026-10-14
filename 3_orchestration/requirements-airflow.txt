@@ -1,5 +1,9 @@
-duckdb>=1.0.0
-dbt-duckdb>=1.10.0
+# Data stack pinned to the versions in uv.lock, so Airflow runs the same dbt
+# and DuckDB as local development. The rest is already installed by the
+# Airflow image; lower bounds only, to keep Airflow's own pins.
+dbt-core==1.12.3
+dbt-duckdb==1.11.0
+duckdb==1.5.5
 pandas>=2.0.0
 pyyaml>=6.0
 requests>=2.31.0
