@@ -5,340 +5,7 @@
 <title>Sport Analytics — Operations Dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<!-- FONT: ROOBERT -->
-<style>
-@font-face {
-    font-family: 'Roobert';
-    src: url('https://cdn.jsdelivr.net/gh/matthewg101/fonts/roobert/Roobert-Regular.woff2') format('woff2'),
-         url('https://cdn.jsdelivr.net/gh/matthewg101/fonts/roobert/Roobert-Regular.woff') format('woff');
-    font-weight: normal;
-    font-style: normal;
-}
-* {
-    font-family: 'Roobert', 'Inter', sans-serif !important;
-}
-</style>
-
-<style>
-:root {
-    --page-plane: #0d0d0d;
-    --card-surface: #1a1a19;
-    --text-primary: #ffffff;
-    --text-secondary: #c3c2b7;
-    --text-muted: #898781;
-    --border-hairline: rgba(255,255,255,0.10);
-    --gridline: #2c2c2a;
-    --delta-good: #0ca30c;
-    --delta-bad: #d03b3b;
-    --delta-neutral: #898781;
-    --color-recovery: #199e70;
-    --color-sleep: #9085e9;
-    --color-strain: #e66767;
-    --color-weather: #4a9fd8;
-    --stage-light: #3987e5;
-    --stage-deep: #9085e9;
-    --stage-rem: #199e70;
-    --stage-awake: #e66767;
-}
-
-body {
-    margin: 0;
-    background: var(--page-plane);
-    color: var(--text-primary);
-    overflow-x: hidden;
-    padding-bottom: 80px;
-}
-
-h1 {
-    font-size: 2.4rem;
-    margin: 50px 0 4px;
-    text-align: center;
-}
-h3 {
-    text-align: center;
-    margin: 0 0 40px;
-    color: var(--text-secondary);
-    font-weight: 400;
-}
-h2.sectionTitle {
-    font-size: 1.3rem;
-    margin: 0 0 20px;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-}
-
-.heroRow {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    width: 90%;
-    max-width: 1200px;
-    margin: 0 auto 32px;
-}
-
-.panel {
-    width: 90%;
-    max-width: 1200px;
-    margin: 32px auto;
-    padding: 28px;
-    border-radius: 12px;
-    background: var(--card-surface);
-    border: 1px solid var(--border-hairline);
-}
-
-.tile {
-    background: var(--card-surface);
-    border: 1px solid var(--border-hairline);
-    border-radius: 12px;
-    padding: 18px 20px;
-}
-.tile .tileHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-    gap: 8px;
-}
-.tile .label {
-    font-size: 0.78rem;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    margin: 0;
-}
-.tile .value {
-    font-size: 2rem;
-    font-weight: 600;
-    margin: 0;
-}
-.tile.small .value {
-    font-size: 1.5rem;
-}
-.chatLog {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    max-height: 360px;
-    overflow-y: auto;
-    margin-bottom: 16px;
-}
-.chatMessage {
-    max-width: 85%;
-    padding: 12px 14px;
-    border-radius: 10px;
-    line-height: 1.45;
-    white-space: pre-wrap;
-}
-.chatMessage.user {
-    align-self: flex-end;
-    background: var(--color-recovery);
-}
-.chatMessage.assistant {
-    align-self: flex-start;
-    background: var(--page-plane);
-    border: 1px solid var(--border-hairline);
-}
-.chatMessage.error {
-    border-color: var(--delta-bad);
-}
-.chatForm {
-    display: flex;
-    gap: 8px;
-}
-.chatForm input {
-    flex: 1;
-    background: var(--page-plane);
-    color: var(--text-primary);
-    border: 1px solid var(--border-hairline);
-    border-radius: 8px;
-    padding: 12px;
-}
-.chatForm button {
-    background: var(--color-recovery);
-    color: var(--text-primary);
-    border: 0;
-    border-radius: 8px;
-    padding: 12px 16px;
-    cursor: pointer;
-}
-.chatForm button:disabled {
-    opacity: 0.6;
-    cursor: default;
-}
-.chatSql {
-    margin-top: 8px;
-    color: var(--text-muted);
-    font-size: 0.85rem;
-}
-.chatSql summary {
-    cursor: pointer;
-}
-.chatSql pre {
-    white-space: pre-wrap;
-    margin: 8px 0 0;
-}
-.tile .subDelta {
-    font-size: 0.82rem;
-    color: var(--text-muted);
-    margin-top: 6px;
-}
-
-.deltaPill {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 8px;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    white-space: nowrap;
-}
-.deltaPill.good { color: var(--delta-good); background: rgba(12,163,12,0.14); }
-.deltaPill.bad { color: var(--delta-bad); background: rgba(208,59,59,0.14); }
-.deltaPill.neutral { color: var(--delta-neutral); background: rgba(137,135,129,0.14); }
-
-.statGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 14px;
-    margin-top: 24px;
-}
-
-.chart-box {
-    width: 100%;
-    max-height: 340px;
-}
-
-.stageBars {
-    margin-top: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-}
-.stageBarRow {
-    display: grid;
-    grid-template-columns: 70px 1fr 60px;
-    align-items: center;
-    gap: 12px;
-}
-.stageBarRow .stageLabel {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-}
-.stageBarTrack {
-    position: relative;
-    height: 24px;
-}
-.stageBarTrack .barPrior,
-.stageBarTrack .barCurrent {
-    position: absolute;
-    left: 0;
-    height: 8px;
-    border-radius: 4px;
-}
-.stageBarTrack .barPrior {
-    top: 2px;
-    background: var(--text-muted);
-    opacity: 0.5;
-}
-.stageBarTrack .barCurrent {
-    bottom: 2px;
-}
-.stageBarRow .stageValue {
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-}
-
-.contentRow {
-    display: flex;
-    gap: 32px;
-}
-
-table.dataTable {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
-}
-table.dataTable th, table.dataTable td {
-    text-align: left;
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--gridline);
-    font-size: 0.9rem;
-}
-table.dataTable th {
-    color: var(--text-muted);
-    font-weight: 500;
-}
-table.dataTable td.num {
-    font-variant-numeric: tabular-nums;
-}
-
-.loading {
-    text-align: center;
-    color: var(--text-muted);
-    padding: 40px;
-}
-
-/* Granularity toggle (Day / Week / Month) */
-.granularityToggle {
-    display: inline-flex;
-    background: var(--page-plane);
-    border: 1px solid var(--border-hairline);
-    border-radius: 999px;
-    padding: 3px;
-    gap: 2px;
-}
-.granularityToggle .toggleBtn {
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    font-size: 0.78rem;
-    font-weight: 600;
-    padding: 5px 12px;
-    border-radius: 999px;
-    cursor: pointer;
-}
-.granularityToggle .toggleBtn.active {
-    background: var(--card-surface);
-    color: var(--text-primary);
-}
-
-/* Moon phase strip (sleep panel) */
-.moonStrip {
-    display: flex;
-    gap: 10px;
-    margin-top: 18px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-}
-.moonStrip .moonDay {
-    flex: 0 0 auto;
-    text-align: center;
-    min-width: 44px;
-}
-.moonStrip .moonEmoji {
-    font-size: 1.5rem;
-    line-height: 1;
-}
-.moonStrip .moonDate {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    margin-top: 4px;
-}
-
-@media(max-width: 1000px) {
-    .heroRow { grid-template-columns: repeat(2, 1fr); }
-    .contentRow { flex-direction: column; }
-}
-@media(max-width: 600px) {
-    .heroRow { grid-template-columns: 1fr; }
-}
-</style>
+<link rel="stylesheet" href="dashboard.css" />
 
 </head>
 
@@ -346,6 +13,12 @@ table.dataTable td.num {
 
 <h1>Sport Analytics</h1>
 <h3>Operations dashboard — recovery, sleep &amp; training load, day by day</h3>
+
+<nav class="topNav" aria-label="Dashboard pages">
+    <a class="active" href="index.html">Overview</a>
+    <a href="sleep.html">Sleep</a>
+    <a href="training.html">Training</a>
+</nav>
 
 <div class="panel" id="chatPanel">
     <h2 class="sectionTitle"><span>Ask your data</span></h2>
@@ -422,146 +95,16 @@ table.dataTable td.num {
     </div>
 </div>
 
-<!-- SLEEP -->
-<div class="panel">
-    <h2 class="sectionTitle">
-        <span>Sleep</span>
-        <div class="granularityToggle" data-panel="sleep">
-            <button class="toggleBtn active" data-granularity="day">Day</button>
-            <button class="toggleBtn" data-granularity="week">Week</button>
-            <button class="toggleBtn" data-granularity="month">Month</button>
-        </div>
-    </h2>
-    <canvas id="sleepChart" class="chart-box"></canvas>
-    <div class="statGrid">
-        <div class="tile small">
-            <div class="tileHeader"><p class="label">Time asleep (7d avg)</p><span id="sleepDurationDelta"></span></div>
-            <p class="value" id="sleepDurationValue">–</p>
-        </div>
-        <div class="tile small">
-            <div class="tileHeader"><p class="label">Sleep efficiency</p><span id="sleepEfficiencyDelta"></span></div>
-            <p class="value" id="sleepEfficiencyValue">–</p>
-        </div>
-        <div class="tile small">
-            <div class="tileHeader"><p class="label">Sleep debt</p><span id="sleepDebtDelta"></span></div>
-            <p class="value" id="sleepDebtValue">–</p>
-        </div>
-    </div>
-    <h2 class="sectionTitle" style="font-size: 1.1rem; margin-top: 28px;">Sleep stage composition (this week vs last week)</h2>
-    <div class="stageBars" id="stageBars"></div>
-
-    <!-- Moon phase strip hidden for now — re-enable by uncommenting
-    <h2 class="sectionTitle" style="font-size: 1.1rem; margin-top: 28px;">Moon phase — last 14 nights</h2>
-    <div class="moonStrip" id="moonStrip"></div>
-    -->
-</div>
-
-<!-- TRAINING -->
-<div class="panel">
-    <h2 class="sectionTitle">
-        <span>Training</span>
-        <div class="granularityToggle" data-panel="strain">
-            <button class="toggleBtn active" data-granularity="day">Day</button>
-            <button class="toggleBtn" data-granularity="week">Week</button>
-            <button class="toggleBtn" data-granularity="month">Month</button>
-        </div>
-    </h2>
-    <canvas id="strainChart" class="chart-box"></canvas>
-    <div class="statGrid">
-        <div class="tile small">
-            <p class="label">Workouts (30d)</p>
-            <p class="value" id="workoutCountValue">–</p>
-        </div>
-        <div class="tile small">
-            <p class="label">Avg strain (30d)</p>
-            <p class="value" id="strainAvgValue">–</p>
-        </div>
-    </div>
-    <div class="contentRow" style="margin-top: 32px;">
-        <div style="flex: 1;">
-            <h2 class="sectionTitle" style="font-size: 1.1rem;">Activity breakdown</h2>
-            <canvas id="activityDonut" class="chart-box" style="max-height: 300px;"></canvas>
-        </div>
-        <div style="flex: 1.4;">
-            <h2 class="sectionTitle" style="font-size: 1.1rem;">Recent workouts</h2>
-            <table class="dataTable" id="recentWorkoutsTable">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Activity</th>
-                        <th>Duration</th>
-                        <th>Strain</th>
-                        <th>Avg HR</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<!-- WEATHER -->
-<div class="panel">
-    <h2 class="sectionTitle">
-        <span>Weather</span>
-        <div class="granularityToggle" data-panel="weather">
-            <button class="toggleBtn active" data-granularity="day">Day</button>
-            <button class="toggleBtn" data-granularity="week">Week</button>
-            <button class="toggleBtn" data-granularity="month">Month</button>
-        </div>
-    </h2>
-    <canvas id="weatherChart" class="chart-box"></canvas>
-    <div class="statGrid">
-        <div class="tile small">
-            <p class="label">Avg temp (30d)</p>
-            <p class="value" id="weatherTempAvgValue">–</p>
-        </div>
-        <div class="tile small">
-            <p class="label">Precipitation days (30d)</p>
-            <p class="value" id="weatherPrecipDaysValue">–</p>
-        </div>
-        <div class="tile small">
-            <p class="label">Avg sunshine (30d)</p>
-            <p class="value" id="weatherSunshineValue">–</p>
-        </div>
-    </div>
-</div>
-
-<script src="dashboard-utils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script src="dashboard-utils.js"></script>
+<script src="dashboard-page.js"></script>
 
 <script>
-const API_BASE = "http://127.0.0.1:8000";
-
-const COLOR_RECOVERY = "#199e70";
-const COLOR_SLEEP = "#9085e9";
-const COLOR_STRAIN = "#e66767";
-const COLOR_WEATHER = "#4a9fd8";
-const CATEGORICAL = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"];
-const OTHER_COLOR = "#898781";
-const STAGE_COLORS = { light: "#3987e5", deep: "#9085e9", rem: "#199e70", awake: "#e66767" };
-const STAGE_LABELS = { light: "Light", deep: "Deep", rem: "REM", awake: "Awake" };
-const MOON_EMOJI = {
-    "New Moon": "🌑", "Waxing Crescent": "🌒", "First Quarter": "🌓", "Waxing Gibbous": "🌔",
-    "Full Moon": "🌕", "Waning Gibbous": "🌖", "Last Quarter": "🌗", "Waning Crescent": "🌘",
-};
-
-const GRID_COLOR = "#2c2c2a";
-const TICK_COLOR = "#898781";
-
-Chart.defaults.color = TICK_COLOR;
-Chart.defaults.font.family = "'Roobert', 'Inter', sans-serif";
-
 // Chart.js instances keyed by canvas id, so granularity toggles can destroy + rebuild.
 const charts = {};
 // Raw daily records kept around per panel so toggling granularity can re-bucket them.
 const panelData = {};
-const panelGranularity = { recovery: "day", sleep: "day", strain: "day", weather: "day" };
-
-function fmtDate(d) {
-    return new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
+const panelGranularity = { recovery: "day" };
 
 function fmtBucketLabel(bucketStart, granularity) {
     if (granularity === "month") {
@@ -633,9 +176,6 @@ function renderGranularChart(panelKey, canvasId, valueField, color, yLabel) {
 
 const PANEL_CHART_CONFIG = {
     recovery: { canvasId: "recoveryChart", valueField: "recovery_score", color: COLOR_RECOVERY, yLabel: "Recovery" },
-    sleep: { canvasId: "sleepChart", valueField: "sleep_performance", color: COLOR_SLEEP, yLabel: "Sleep performance" },
-    strain: { canvasId: "strainChart", valueField: "activity_strain", color: COLOR_STRAIN, yLabel: "Strain" },
-    weather: { canvasId: "weatherChart", valueField: "temperature_mean_celsius", color: COLOR_WEATHER, yLabel: "Temp (°C)" },
 };
 
 document.querySelectorAll(".granularityToggle").forEach(toggle => {
@@ -702,182 +242,30 @@ function renderRecoverySection(data) {
     renderStatTile("skinTemp", latest.skin_temp_celsius != null ? `${latest.skin_temp_celsius.toFixed(1)}°C` : "–", skinTempDeltas.delta7);
 }
 
-function renderStageBars(stages) {
-    const maxVal = Math.max(
-        ...Object.values(stages).flatMap(s => [s.current || 0, s.prior || 0]),
-        1
-    );
-    const container = document.getElementById("stageBars");
-    container.innerHTML = "";
-    for (const [stage, vals] of Object.entries(stages)) {
-        const curPct = ((vals.current || 0) / maxVal) * 100;
-        const priorPct = ((vals.prior || 0) / maxVal) * 100;
-        const row = document.createElement("div");
-        row.className = "stageBarRow";
-        row.innerHTML = `
-            <span class="stageLabel">${STAGE_LABELS[stage]}</span>
-            <div class="stageBarTrack">
-                <div class="barPrior" style="width:${priorPct}%"></div>
-                <div class="barCurrent" style="width:${curPct}%; background:${STAGE_COLORS[stage]}"></div>
-            </div>
-            <span class="stageValue">${vals.current != null ? Math.round(vals.current) + "m" : "–"}</span>
-        `;
-        container.appendChild(row);
-    }
-}
 
-function renderMoonStrip(data) {
-    const container = document.getElementById("moonStrip");
-    container.innerHTML = "";
-    const recent = last(data.filter(d => d.moon_phase), 14);
-    recent.forEach(d => {
-        const day = document.createElement("div");
-        day.className = "moonDay";
-        day.title = `${d.moon_phase} — ${d.moon_illumination != null ? d.moon_illumination.toFixed(0) + "% illuminated" : ""}`;
-        day.innerHTML = `
-            <div class="moonEmoji">${MOON_EMOJI[d.moon_phase] || "🌙"}</div>
-            <div class="moonDate">${fmtDate(d.date_day)}</div>
-        `;
-        container.appendChild(day);
-    });
-}
-
-function renderSleepSection(data) {
-    panelData.sleep = data;
-    renderGranularChart("sleep", "sleepChart", "sleep_performance", COLOR_SLEEP, "Sleep performance");
-
+function renderHeroSleep(data) {
     const latest = data[data.length - 1];
     const refDate = latestDateExclusive(data, "date_day");
-
     const perfDeltas = computeKpiDeltas(data, "date_day", "sleep_performance", "sleep_performance", refDate);
     renderHeroTile("heroSleepPerf", latest.sleep_performance != null ? `${Math.round(latest.sleep_performance)}%` : "–", perfDeltas.delta7, perfDeltas.delta30);
-
-    const durAvg7 = windowAverage(data, "date_day", "asleep_duration_minutes", refDate, 7, 0);
-    const durDeltas = computeKpiDeltas(data, "date_day", "asleep_duration_minutes", "sleep_duration", refDate);
-    renderStatTile("sleepDuration", durAvg7 != null ? `${Math.floor(durAvg7 / 60)}h ${Math.round(durAvg7 % 60)}m` : "–", durDeltas.delta7);
-
-    const effDeltas = computeKpiDeltas(data, "date_day", "sleep_efficiency", "sleep_efficiency", refDate);
-    renderStatTile("sleepEfficiency", latest.sleep_efficiency != null ? `${Math.round(latest.sleep_efficiency)}%` : "–", effDeltas.delta7);
-
-    const debtDeltas = computeKpiDeltas(data, "date_day", "sleep_debt_minutes", "sleep_debt", refDate);
-    renderStatTile("sleepDebt", latest.sleep_debt_minutes != null ? `${Math.round(latest.sleep_debt_minutes)} min` : "–", debtDeltas.delta7);
-
-    renderStageBars(weeklyStageAverages(data, refDate));
-    // renderMoonStrip(data); // hidden for now, see index.html moonStrip markup
 }
 
-function renderWeatherSection(data) {
-    panelData.weather = data;
-    renderGranularChart("weather", "weatherChart", "temperature_mean_celsius", COLOR_WEATHER, "Temp (°C)");
-
-    const recent30 = last(data, 30);
-    const tempAvg30 = avgField(recent30, "temperature_mean_celsius");
-    document.getElementById("weatherTempAvgValue").textContent = tempAvg30 !== null ? `${tempAvg30.toFixed(1)}°C` : "–";
-
-    const precipDays = recent30.filter(d => d.had_precipitation).length;
-    document.getElementById("weatherPrecipDaysValue").textContent = precipDays;
-
-    const sunshineAvg30 = avgField(recent30, "sunshine_duration_hours");
-    document.getElementById("weatherSunshineValue").textContent = sunshineAvg30 !== null ? `${sunshineAvg30.toFixed(1)}h` : "–";
-}
-
-function renderTrainingSection(data) {
-    panelData.strain = data;
-    renderGranularChart("strain", "strainChart", "activity_strain", COLOR_STRAIN, "Strain");
-
+function renderHeroStrain(data) {
     const latest = data[data.length - 1];
     const refDate = latestDateExclusive(data, "date_day");
-
     const strainDeltas = computeKpiDeltas(data, "date_day", "activity_strain", "strain", refDate);
     renderHeroTile("heroStrain", latest.activity_strain != null ? latest.activity_strain.toFixed(1) : "–", strainDeltas.delta7, strainDeltas.delta30);
-
-    const recent30 = last(data, 30);
-    document.getElementById("workoutCountValue").textContent = recent30.length;
-    const strainAvg30 = avgField(recent30, "activity_strain");
-    document.getElementById("strainAvgValue").textContent = strainAvg30 !== null ? strainAvg30.toFixed(1) : "–";
-
-    const counts = {};
-    data.forEach(d => {
-        const name = d.activity_name || "Unknown";
-        counts[name] = (counts[name] || 0) + 1;
-    });
-    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    const top = sorted.slice(0, 7);
-    const rest = sorted.slice(7);
-    const otherTotal = rest.reduce((sum, [, v]) => sum + v, 0);
-
-    const donutLabels = top.map(([name]) => name);
-    const donutValues = top.map(([, v]) => v);
-    const donutColors = top.map((_, i) => CATEGORICAL[i]);
-    if (otherTotal > 0) {
-        donutLabels.push("Other");
-        donutValues.push(otherTotal);
-        donutColors.push(OTHER_COLOR);
-    }
-
-    new Chart(document.getElementById("activityDonut"), {
-        type: "doughnut",
-        data: {
-            labels: donutLabels,
-            datasets: [{
-                data: donutValues,
-                backgroundColor: donutColors,
-                borderColor: "#1a1a19",
-                borderWidth: 2
-            }]
-        },
-        plugins: [ChartDataLabels],
-        options: {
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: "right",
-                    labels: { color: TICK_COLOR, boxWidth: 14 }
-                },
-                tooltip: {
-                    backgroundColor: "#1a1a19",
-                    titleColor: "#fff",
-                    bodyColor: "#fff"
-                },
-                datalabels: {
-                    color: "#fff",
-                    font: { size: 12, weight: "600" },
-                    formatter: (value, ctx) => {
-                        const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                        const pct = (value / total) * 100;
-                        return pct >= 8 ? `${Math.round(pct)}%` : "";
-                    }
-                }
-            }
-        }
-    });
-
-    const tbody = document.querySelector("#recentWorkoutsTable tbody");
-    const recentRows = data.slice(-10).reverse();
-    recentRows.forEach(d => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-            <td>${fmtDate(d.date_day)}</td>
-            <td>${d.activity_name ?? "Unknown"}</td>
-            <td class="num">${Math.round(d.duration_minutes)} min</td>
-            <td class="num">${d.activity_strain?.toFixed(1) ?? "–"}</td>
-            <td class="num">${d.average_heart_rate ? Math.round(d.average_heart_rate) : "–"}</td>
-        `;
-        tbody.appendChild(tr);
-    });
 }
 
 Promise.all([
-    fetch(`${API_BASE}/recovery`).then(r => r.json()),
-    fetch(`${API_BASE}/sleep`).then(r => r.json()),
-    fetch(`${API_BASE}/workouts`).then(r => r.json()),
-    fetch(`${API_BASE}/weather`).then(r => r.json()),
-]).then(([recovery, sleep, workouts, weather]) => {
+    fetchJson("/recovery"),
+    fetchJson("/sleep"),
+    fetchJson("/workouts"),
+]).then(([recovery, sleep, workouts]) => {
     if (recovery.length) renderRecoverySection(recovery);
-    if (sleep.length) renderSleepSection(sleep);
-    if (workouts.length) renderTrainingSection(workouts);
-    if (weather.length) renderWeatherSection(weather);
-}).catch(err => console.error("Failed to load dashboard data:", err));
+    if (sleep.length) renderHeroSleep(sleep);
+    if (workouts.length) renderHeroStrain(workouts);
+}).catch(showLoadError);
 
 const chatLog = document.getElementById("chatLog");
 const chatForm = document.getElementById("chatForm");

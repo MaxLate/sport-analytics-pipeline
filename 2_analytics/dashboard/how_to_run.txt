@@ -14,7 +14,8 @@ Introduction to run: dashboard
 
 Note:
 - Keep both servers running (API on port 8000, HTML on port 5500)
-- The HTML file fetches data from the API at http://127.0.0.1:8000/recovery, /sleep, /workouts, /weather
+- There are three pages: index.html (Overview), sleep.html and training.html
+- The pages fetch /recovery, /sleep and /workouts from http://127.0.0.1:8000; /weather remains available but no page requests it
 - The chat panel posts questions to http://127.0.0.1:8000/chat
 - Chat needs a local Ollama server (default http://localhost:11434) and a tool-capable model. The default is llama3.2:latest via OLLAMA_MODEL=ollama_chat/llama3.2:latest
 - Make sure the database is at: 0_data/database/warehouse.duckdb
