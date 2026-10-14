@@ -12,13 +12,13 @@ The dashboard is for personal exploration. Sleep charts must describe associatio
 
 ## Navigation and Page Structure
 
-All three pages use a persistent left sidebar with these links:
+All three pages use a persistent top tab strip, directly under the page title, with these links:
 
 1. Overview
 2. Sleep
 3. Training
 
-The active page is highlighted with the existing green accent. The sidebar replaces redirect buttons and back links. On narrow screens it collapses into a compact horizontal navigation bar so chart width remains usable.
+The active tab is underlined with the existing green accent. There is no sidebar, redirect button, or back link. The strip stays horizontal on narrow screens; the three labels do not collapse into another control.
 
 The implementation uses three static pages in `2_analytics/dashboard/`:
 
@@ -214,8 +214,8 @@ Add API tests or direct query smoke checks for:
 
 Verify at desktop and narrow viewport widths:
 
-- sidebar navigation and active state on all three pages
-- responsive collapsed navigation
+- top tab navigation and active underline on all three pages
+- the same horizontal tab strip on narrow screens
 - Overview retains all four KPI tiles and Recovery details
 - Overview contains no detailed Sleep, Training, or Weather sections
 - every period preset updates every element on its page

@@ -9,28 +9,29 @@ Adapted from an earlier `sport_analytics` project that also ingested Strava. Thi
 ## 🏗️ Architecture
 
 ```
-WHOOP API ─┐                                 ┌─→ source.duckdb (raw + staging views)
-            ├─→ extract (raw JSON) ─→ load ──┤
-Open-Meteo ─┘                                 └─→ dbt seed/run/test per layer
-                                                     │
-                                        transform.duckdb (intermediate tables)
-                                                     │
-                                        analytics.duckdb (fact/dim tables)
+WHOOP API ─┐                                  warehouse.duckdb
+            ├─→ extract (raw JSON) ─→ load ──→  whoop / weather   (raw)
+Open-Meteo ─┘                                   seeds             (dbt seed)
+                                                staging           (views)
+                                                intermediate      (tables)
+                                                marts             (fact/dim tables)
                                                      │
                                          FastAPI + static HTML dashboard
 ```
 
-Orchestrated by Airflow (`3_orchestration/`, docker-compose, daily schedule): extract → load → `dbt run`/`dbt test` per layer, in the order the three-database dbt setup requires.
+Orchestrated by Airflow (`3_orchestration/`, docker-compose, daily schedule): extract → load → `dbt seed` → `dbt build` per layer (staging → intermediate → marts). Tests are part of `dbt build`, so a failing test stops the downstream layers. dbt and DuckDB are pinned to the same versions as `uv.lock`, and dbt packages are installed into the image at build time.
 
 ### Database architecture
 
-Three separate DuckDB files, one per pipeline stage — not three schemas in one file:
+One DuckDB file, `0_data/database/warehouse.duckdb`, with one schema per layer:
 
-- `0_data/database/source.duckdb` — raw WHOOP/weather tables + seed CSVs + staging views
-- `0_data/database/transform.duckdb` — intermediate, per-source enriched tables
-- `0_data/database/analytics.duckdb` — final fact/dim tables the dashboard reads from
+- `whoop`, `weather` — raw tables written by the load scripts
+- `seeds` — CSV seeds (moon phase, activity mapping)
+- `staging` — 1:1 cleaned views over raw tables and seeds
+- `intermediate` — per-source enriched tables
+- `marts` — final fact/dim tables the dashboard and chat read from
 
-dbt attaches the upstream database file(s) automatically per target via a macro — see `CLAUDE.md` for the mechanics and the resulting `--target` requirement.
+The schema is the top-level model folder (`macros/generate_schema_name.sql`), so a new model lands in the right layer without extra config.
 
 ## 📊 Data Sources
 
@@ -54,6 +55,7 @@ Static seed (`1_elt/2_transform/seeds/mooncalender.csv`, 2024-01-01 through 2026
 - **Orchestration**: Apache Airflow (docker-compose, LocalExecutor)
 - **API**: FastAPI
 - **Dashboard**: static HTML + Chart.js (no build step)
+- **Chat**: YAML semantic layer, `sqlglot` SQL guard, Google ADK agents on a local Ollama model
 - **Tooling**: `uv`, `pre-commit` (black, ruff, sqlfluff)
 
 ## 📁 Project Structure
@@ -61,7 +63,7 @@ Static seed (`1_elt/2_transform/seeds/mooncalender.csv`, 2024-01-01 through 2026
 ```
 .
 ├── 0_data/
-│   ├── database/            # source.duckdb, transform.duckdb, analytics.duckdb (gitignored)
+│   ├── database/            # warehouse.duckdb (gitignored)
 │   └── raw/{whoop,weather}/ # raw JSON dumps (gitignored)
 ├── 1_elt/
 │   ├── 0_extract/{whoop,weather}/
@@ -91,6 +93,22 @@ uv sync
 uv run pre-commit install
 ```
 
+### Quick start with sample data (no WHOOP account needed)
+
+`load_sample_data.py` writes six months of deterministic synthetic WHOOP and weather data into the raw schemas, with the same column types as the real loads. It refuses to overwrite a warehouse that already holds raw data.
+
+```bash
+uv run python 1_elt/1_load/sample/load_sample_data.py
+cd 1_elt/2_transform && export DBT_PROFILES_DIR=. && uv run dbt deps && uv run dbt build
+```
+
+To keep real and demo data apart, point everything at another file with `WAREHOUSE_PATH` (absolute path; read by dbt, the API and the chat):
+
+```bash
+export WAREHOUSE_PATH=$PWD/0_data/database/demo.duckdb
+uv run python 1_elt/1_load/sample/load_sample_data.py --db-path "$WAREHOUSE_PATH"
+```
+
 ### Configuration
 
 ```bash
@@ -118,10 +136,8 @@ python 1_elt/0_extract/weather/extract_weather_data.py
 python 1_elt/1_load/weather/load_weather_data.py
 
 # Transform (from 1_elt/2_transform/, with DBT_PROFILES_DIR=.)
-dbt seed --target source
-dbt run --select 'staging.*' --target source
-dbt run --select 'intermediate.*' --target transform
-dbt run --select 'metrics.*' --target analytics
+dbt deps
+dbt build        # seeds, models and tests for all layers
 
 # Dashboard
 uv run uvicorn "2_analytics.dashboard.api:app" --reload
@@ -129,34 +145,63 @@ cd 2_analytics/dashboard && python3 -m http.server 5500   # then open http://127
 
 # Orchestration (optional — runs the whole pipeline daily)
 cd 3_orchestration && docker compose up --build
+# Without WHOOP credentials: the DAG loads sample data into demo.duckdb instead
+cd 3_orchestration && PIPELINE_MODE=sample docker compose up --build
 ```
 
 ## 🗄️ Database Schema
 
-Key tables (in `analytics.duckdb`):
+Key tables (in `warehouse.duckdb`):
 
 | Table | Description |
 |---|---|
-| `whoop.fct_whoop_recovery` | Daily recovery score, RHR, HRV |
-| `whoop.fct_whoop_sleeps` | Sleep duration + stage breakdown, moon phase |
-| `whoop.fct_whoop_sleep_quality` | Sleep performance/efficiency/debt, moon phase |
-| `whoop.fct_whoop_workouts` | Per-workout strain, heart rate, zones |
-| `weather.fct_weather_daily` | Daily local weather |
-| `dates.dim_dates` | Date spine |
-| `semantic.fct_daily_overview` | One row per day: WHOOP + moon + weather combined |
-| `semantic.data_check` | Per-date data availability across sources |
+| `marts.fct_whoop_recovery` | Daily recovery score, RHR, HRV |
+| `marts.fct_whoop_sleeps` | Sleep duration + stage breakdown, moon phase |
+| `marts.fct_whoop_sleep_quality` | Sleep performance/efficiency/debt, moon phase |
+| `marts.fct_whoop_workouts` | Per-workout strain, heart rate, zones |
+| `marts.fct_weather_daily` | Daily local weather |
+| `marts.dim_dates` | Date spine |
+| `marts.fct_daily_overview` | One row per day: WHOOP + moon + weather combined |
+| `marts.data_check` | Per-date data availability across sources |
+
+## 💬 Ask your data (LLM module)
+
+The dashboard has a chat panel (`POST /chat`) that answers questions from the marts. It is built around a small semantic layer, `2_analytics/dashboard/semantic_layer.yml`, written in the shape of dbt semantic models: each mart declares its grain, columns, entities (join keys) and measures. It is a hand-written YAML read by Python, not dbt's MetricFlow.
+
+A question goes through two paths:
+
+1. **Metric questions are compiled deterministically, no LLM.** "How many runs did I do in March 2026?" or "average recovery score in May 2026" match a declared measure or filter, are compiled to one SQL aggregate, and are answered with a fixed sentence ("You have done 8 runs in March 2026."). Same question, same SQL, same answer.
+2. **Open questions go to a three-agent pipeline** (Google ADK, local Ollama model via LiteLLM): a scope agent checks relevance and looks up tables and allowed joins in the semantic layer, a SQL agent writes one query, an answer agent phrases the result from the returned rows only.
+
+Guardrails:
+
+- Every query, generated or compiled, is parsed with `sqlglot` and must be a single read-only `SELECT` on the tables declared in the semantic layer; file-reading functions are blocked. DuckDB is opened read-only.
+- The executed SQL is shown under every answer.
+- Contract tests (`test_semantic_contract.py`) fail when the YAML references a column the marts don't have, or an activity the dbt seed doesn't know.
+- Ollama is optional: without it, metric questions still work and open questions return HTTP 503.
 
 ## 🧪 Testing
 
 ```bash
-# dbt tests, per layer with the matching target
-cd 1_elt/2_transform
-dbt test --select 'staging.*' --target source
-dbt test --select 'intermediate.*' --target transform
-dbt test --select 'metrics.*' --target analytics
+# dbt tests (from 1_elt/2_transform/, with DBT_PROFILES_DIR=.)
+dbt test
+
+# Dashboard and chat (API, SQL guard, query tool, semantic layer)
+uv run pytest 2_analytics/dashboard
 
 # Dashboard JS unit tests
 node 2_analytics/dashboard/test-dashboard-utils.js
+```
+
+## 🔁 CI/CD (GitHub Actions)
+
+- **`.github/workflows/ci.yml`**, on every pull request and push to `main`:
+  - `pipeline` job: `uv sync --locked`, ruff, sqlfluff, load sample data, `dbt build` (all models and tests), pytest (including the semantic layer contract against the freshly built marts), dashboard JS tests. No secrets needed.
+  - `airflow-image` job: builds the Airflow image (pinned dbt/DuckDB, dbt packages baked in) and imports the DAG in live and sample mode.
+- **`.github/workflows/release.yml`**, on a `v*` tag: pushes the Airflow image to `ghcr.io/<owner>/sport-analytics-airflow` (tags `1.2.3`, `1.2`, `latest`) and creates a GitHub release with generated notes.
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0   # cut a release
 ```
 
 ## 📝 Code Quality
@@ -169,7 +214,7 @@ pre-commit run --all-files   # black + ruff (Python), sqlfluff lint/fix (SQL, du
 
 ### Adding a new data source
 
-Follow the WHOOP/weather pattern: `1_elt/0_extract/<source>/` (client + extract-to-JSON script), `1_elt/1_load/<source>/` (JSON → `source.duckdb`, choose skip-existing vs upsert-by-date depending on whether the source's records are immutable), then `staging` → `intermediate` → `metrics` dbt models under the matching schema (add a branch to `macros/generate_schema_name.sql` if it's a new schema name).
+Follow the WHOOP/weather pattern: `1_elt/0_extract/<source>/` (client + extract-to-JSON script), `1_elt/1_load/<source>/` (JSON → a raw `<source>` schema in `warehouse.duckdb`, choose skip-existing vs upsert-by-date depending on whether the source's records are immutable), then `staging` → `intermediate` → `marts` dbt models in a `<source>/` subfolder of each layer.
 
 ### Adding to the dashboard
 
