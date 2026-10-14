@@ -2,15 +2,16 @@
 # FastAPI backend for serving DuckDB — Sport Analytics Operations Dashboard
 # =====================================================================
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pathlib import Path
 import duckdb
 import numpy as np
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
-# Get the project root directory (go up 3 levels from 2_analytics/dashboard/)
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-DUCKDB_PATH = str(PROJECT_ROOT / "0_data" / "database" / "analytics.duckdb")
+from .chat_agents import DB_PATH
+from .chat_runner import ChatUnavailable, run_chat
+
+DUCKDB_PATH = str(DB_PATH)
 
 app = FastAPI()
 
@@ -42,7 +43,7 @@ def get_recovery():
             hrv_rmssd_milli,
             spo2_percentage,
             skin_temp_celsius
-        FROM whoop.fct_whoop_recovery
+        FROM marts.fct_whoop_recovery
         WHERE recovery_score IS NOT NULL
         ORDER BY date_day
         """
@@ -75,8 +76,8 @@ def get_sleep():
             q.moon_phase,
             q.moon_illumination,
             q.moon_phase_cycle
-        FROM whoop.fct_whoop_sleeps s
-        LEFT JOIN whoop.fct_whoop_sleep_quality q ON s.sleep_id = q.sleep_id
+        FROM marts.fct_whoop_sleeps s
+        LEFT JOIN marts.fct_whoop_sleep_quality q ON s.sleep_id = q.sleep_id
         WHERE s.asleep_duration_minutes IS NOT NULL
         ORDER BY s.date_day
         """
@@ -102,7 +103,7 @@ def get_workouts():
             kilojoule,
             average_heart_rate,
             max_heart_rate
-        FROM whoop.fct_whoop_workouts
+        FROM marts.fct_whoop_workouts
         WHERE activity_strain IS NOT NULL
         ORDER BY workout_start_time
         """
@@ -127,10 +128,50 @@ def get_weather():
             had_precipitation,
             sunshine_duration_hours,
             weathercode
-        FROM weather.fct_weather_daily
+        FROM marts.fct_weather_daily
         ORDER BY date_day
         """
     ).fetchdf()
     con.close()
 
     return to_json_records(df)
+
+
+class ChatRequest(BaseModel):
+    message: str
+    session_id: str
+
+
+class ChatResponse(BaseModel):
+    answer: str
+    sql: str | None = None
+    row_count: int | None = None
+    truncated: bool = False
+    error: str | None = None
+
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat(body: ChatRequest):
+    """Ask a question about the analytics database. The model only sees query rows."""
+    message = body.message.strip()
+    session_id = body.session_id.strip()
+    if not message or not session_id:
+        raise HTTPException(
+            status_code=400, detail="Message and session_id are required"
+        )
+
+    try:
+        result = await run_chat(message, session_id)
+    except ChatUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    if result.error:
+        raise HTTPException(status_code=422, detail=result.error)
+
+    return ChatResponse(
+        answer=result.answer,
+        sql=result.sql,
+        row_count=result.row_count,
+        truncated=result.truncated,
+        error=None,
+    )

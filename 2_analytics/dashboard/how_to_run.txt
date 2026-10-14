@@ -15,6 +15,8 @@ Introduction to run: dashboard
 Note:
 - Keep both servers running (API on port 8000, HTML on port 5500)
 - The HTML file fetches data from the API at http://127.0.0.1:8000/recovery, /sleep, /workouts, /weather
-- Make sure the database is at: 0_data/database/analytics.duckdb
-- Make sure these tables exist: whoop.fct_whoop_recovery, whoop.fct_whoop_sleeps, whoop.fct_whoop_sleep_quality, whoop.fct_whoop_workouts, weather.fct_weather_daily
-- DuckDB only allows one writer at a time — if Airflow is mid-run against analytics.duckdb, the API's read-only connections may briefly fail; just retry.
+- The chat panel posts questions to http://127.0.0.1:8000/chat
+- Chat needs a local Ollama server (default http://localhost:11434) and a tool-capable model. The default is llama3.2:latest via OLLAMA_MODEL=ollama_chat/llama3.2:latest
+- Make sure the database is at: 0_data/database/warehouse.duckdb
+- Make sure these tables exist: marts.fct_whoop_recovery, marts.fct_whoop_sleeps, marts.fct_whoop_sleep_quality, marts.fct_whoop_workouts, marts.fct_weather_daily
+- DuckDB only allows one writer at a time — if Airflow is mid-run against warehouse.duckdb, the API's read-only connections may briefly fail; just retry.

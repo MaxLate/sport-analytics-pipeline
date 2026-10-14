@@ -1,0 +1,243 @@
+# Semantic contract for the analytics chat, in the dbt semantic-model shape.
+# MetricFlow is not running. Shared entity names are the allowed joins.
+
+aggregations:
+  count: ["how many", "number of", "count of"]
+  average: ["average", "avg", "mean"]
+  sum: ["total", "sum of"]
+  max: ["highest", "maximum"]
+
+filters:
+  - model: workouts
+    column: activity_name
+    label: runs
+    terms: [running, runs, run]
+    values: [Run, "Trail Run"]
+  - model: workouts
+    column: activity_name
+    label: rides
+    terms: [cycling, rides, ride, bike]
+    values: [Cycling]
+  - model: workouts
+    column: activity_name
+    label: hikes
+    terms: [hikes, hike, hiking]
+    values: [Hiking]
+
+measures:
+  - model: recovery
+    expr: recovery_score
+    label: recovery score
+    terms: ["recovery score", recovery]
+    aggs: [average, max]
+  - model: workouts
+    expr: activity_strain
+    label: strain
+    terms: [strain]
+    aggs: [average, sum, max]
+  - model: sleep_quality
+    expr: sleep_performance
+    label: sleep performance
+    terms: ["sleep performance"]
+    aggs: [average]
+    where: "nap = false"
+  - model: weather
+    expr: temperature_mean_celsius
+    label: temperature
+    terms: [temperature]
+    aggs: [average, max]
+
+topics:
+  recovery:
+    keywords: [recovery, hrv, "resting heart", spo2, "skin temp", "skin temperature"]
+    models: [recovery, daily_overview, dates]
+  sleep:
+    keywords: [sleep, nap, rem, "deep sleep", "sleep debt", "sleep performance"]
+    models: [sleeps, sleep_quality, daily_overview, dates]
+  moon:
+    keywords: [moon, lunar, illumination]
+    models: [sleep_quality, daily_overview, dates]
+  workouts:
+    keywords: [workout, training, strain, sport, activity, run, cycling, "heart rate"]
+    models: [workouts, workout_activities, daily_overview, dates]
+  weather:
+    keywords: [weather, temperature, rain, precipitation, sunshine, wind, snow]
+    models: [weather, sleep_quality, daily_overview, dates]
+  availability:
+    keywords: [missing data, "data available", availability, "no data"]
+    models: [data_check, dates]
+  dates:
+    keywords: [weekend, weekday, month, year, calendar]
+    models: [dates, daily_overview]
+
+semantic_models:
+  - name: recovery
+    model: marts.fct_whoop_recovery
+    grain: one row per recovery day
+    columns:
+      - date_day
+      - recovery_score
+      - resting_heart_rate
+      - hrv_rmssd_milli
+      - spo2_percentage
+      - skin_temp_celsius
+    entities:
+      - name: date_day
+        type: foreign
+        expr: date_day
+    measures:
+      - name: recovery_score
+        agg: average
+        expr: recovery_score
+
+  - name: sleeps
+    model: marts.fct_whoop_sleeps
+    grain: one row per sleep episode
+    columns:
+      - sleep_id
+      - date_day
+      - wake_up_date
+      - asleep_duration_minutes
+      - deep_sleep_duration_minutes
+      - rem_duration_minutes
+      - light_sleep_duration_minutes
+      - awake_duration_minutes
+      - moon_phase
+      - moon_illumination
+    entities:
+      - name: sleep
+        type: primary
+        expr: sleep_id
+      - name: date_day
+        type: foreign
+        expr: date_day
+
+  - name: sleep_quality
+    model: marts.fct_whoop_sleep_quality
+    grain: one row per sleep episode
+    notes: Main sleep is nap = false. Overnight weather joins on wake_up_date.
+    columns:
+      - sleep_id
+      - date_day
+      - wake_up_date
+      - sleep_performance
+      - sleep_efficiency
+      - sleep_debt_minutes
+      - nap
+      - moon_phase
+      - moon_illumination
+    entities:
+      - name: sleep
+        type: primary
+        expr: sleep_id
+      - name: date_day
+        type: foreign
+        expr: date_day
+      - name: weather_day
+        type: foreign
+        expr: wake_up_date
+    measures:
+      - name: sleep_performance
+        agg: average
+        expr: sleep_performance
+
+  - name: workouts
+    model: marts.fct_whoop_workouts
+    grain: one row per workout
+    notes: Sport sessions are is_sport_exercise = true.
+    columns:
+      - date_day
+      - workout_start_time
+      - activity_name
+      - is_sport_exercise
+      - duration_minutes
+      - activity_strain
+      - average_heart_rate
+      - max_heart_rate
+    entities:
+      - name: date_day
+        type: foreign
+        expr: date_day
+      - name: activity
+        type: foreign
+        expr: activity_name
+    measures:
+      - name: activity_strain
+        agg: average
+        expr: activity_strain
+
+  - name: workout_activities
+    model: marts.dim_whoop_workouts
+    grain: one row per activity name
+    columns: [activity_name, is_sport_exercise]
+    entities:
+      - name: activity
+        type: primary
+        expr: activity_name
+
+  - name: weather
+    model: marts.fct_weather_daily
+    grain: one row per day at the configured location
+    columns:
+      - date_day
+      - temperature_min_celsius
+      - temperature_mean_celsius
+      - temperature_max_celsius
+      - precipitation_sum_mm
+      - had_precipitation
+      - sunshine_duration_hours
+    entities:
+      - name: date_day
+        type: primary
+        expr: date_day
+      - name: weather_day
+        type: primary
+        expr: date_day
+
+  - name: dates
+    model: marts.dim_dates
+    grain: one row per calendar day
+    notes: year, month, week, and day exist only on this table.
+    columns: [date_day, year, month, week, day_name, is_weekend, is_weekday]
+    entities:
+      - name: date_day
+        type: primary
+        expr: date_day
+
+  - name: daily_overview
+    model: marts.fct_daily_overview
+    grain: one row per day, already joined
+    notes: Prefer this table for a daily summary. It has date_day, not year or month.
+    columns:
+      - date_day
+      - day_name
+      - is_weekend
+      - recovery_score
+      - resting_heart_rate
+      - hrv_rmssd_milli
+      - sleep_performance
+      - sleep_efficiency
+      - moon_phase
+      - moon_illumination
+      - workout_count
+      - total_strain
+      - max_strain
+      - temperature_mean_celsius
+      - precipitation_sum_mm
+    entities:
+      - name: date_day
+        type: foreign
+        expr: date_day
+
+  - name: data_check
+    model: marts.data_check
+    grain: one row per day
+    columns:
+      - date_day
+      - is_whoop_sleeps_data_available
+      - is_whoop_workouts_data_available
+      - is_weather_data_available
+    entities:
+      - name: date_day
+        type: foreign
+        expr: date_day

@@ -117,6 +117,69 @@ h2.sectionTitle {
 .tile.small .value {
     font-size: 1.5rem;
 }
+.chatLog {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 360px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+}
+.chatMessage {
+    max-width: 85%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+}
+.chatMessage.user {
+    align-self: flex-end;
+    background: var(--color-recovery);
+}
+.chatMessage.assistant {
+    align-self: flex-start;
+    background: var(--page-plane);
+    border: 1px solid var(--border-hairline);
+}
+.chatMessage.error {
+    border-color: var(--delta-bad);
+}
+.chatForm {
+    display: flex;
+    gap: 8px;
+}
+.chatForm input {
+    flex: 1;
+    background: var(--page-plane);
+    color: var(--text-primary);
+    border: 1px solid var(--border-hairline);
+    border-radius: 8px;
+    padding: 12px;
+}
+.chatForm button {
+    background: var(--color-recovery);
+    color: var(--text-primary);
+    border: 0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    cursor: pointer;
+}
+.chatForm button:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+.chatSql {
+    margin-top: 8px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+.chatSql summary {
+    cursor: pointer;
+}
+.chatSql pre {
+    white-space: pre-wrap;
+    margin: 8px 0 0;
+}
 .tile .subDelta {
     font-size: 0.82rem;
     color: var(--text-muted);
@@ -283,6 +346,15 @@ table.dataTable td.num {
 
 <h1>Sport Analytics</h1>
 <h3>Operations dashboard — recovery, sleep &amp; training load, day by day</h3>
+
+<div class="panel" id="chatPanel">
+    <h2 class="sectionTitle"><span>Ask your data</span></h2>
+    <div class="chatLog" id="chatLog" aria-live="polite"></div>
+    <form class="chatForm" id="chatForm">
+        <input id="chatInput" type="text" name="message" placeholder="Ask about recovery, sleep, workouts, or weather" autocomplete="off" required />
+        <button id="chatSend" type="submit">Send</button>
+    </form>
+</div>
 
 <div class="heroRow">
     <div class="tile">
@@ -806,6 +878,73 @@ Promise.all([
     if (workouts.length) renderTrainingSection(workouts);
     if (weather.length) renderWeatherSection(weather);
 }).catch(err => console.error("Failed to load dashboard data:", err));
+
+const chatLog = document.getElementById("chatLog");
+const chatForm = document.getElementById("chatForm");
+const chatInput = document.getElementById("chatInput");
+const chatSend = document.getElementById("chatSend");
+
+function chatSessionId() {
+    const key = "sportChatSession";
+    let id = sessionStorage.getItem(key);
+    if (!id) {
+        id = crypto.randomUUID();
+        sessionStorage.setItem(key, id);
+    }
+    return id;
+}
+
+function appendChatMessage(role, text, extra) {
+    const item = document.createElement("div");
+    item.className = `chatMessage ${role}`;
+    item.textContent = text;
+    if (extra) item.appendChild(extra);
+    chatLog.appendChild(item);
+    chatLog.scrollTop = chatLog.scrollHeight;
+    return item;
+}
+
+chatForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const message = chatInput.value.trim();
+    if (!message) return;
+    appendChatMessage("user", message);
+    chatInput.value = "";
+    chatSend.disabled = true;
+    const pending = appendChatMessage("assistant", "Looking at your data…");
+    try {
+        const response = await fetch(`${API_BASE}/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message, session_id: chatSessionId() }),
+        });
+        const body = await response.json();
+        if (!response.ok) {
+            pending.classList.add("error");
+            pending.textContent = body.detail || "The question could not be answered.";
+            return;
+        }
+        pending.textContent = body.answer;
+        if (body.sql) {
+            const details = document.createElement("details");
+            details.className = "chatSql";
+            const summary = document.createElement("summary");
+            const rowLabel = body.row_count == null ? "" : ` · ${body.row_count} rows`;
+            const truncated = body.truncated ? " · truncated" : "";
+            summary.textContent = `Query${rowLabel}${truncated}`;
+            const pre = document.createElement("pre");
+            pre.textContent = body.sql;
+            details.append(summary, pre);
+            pending.appendChild(details);
+        }
+    } catch (err) {
+        pending.classList.add("error");
+        pending.textContent = "The dashboard API is not reachable.";
+    } finally {
+        chatSend.disabled = false;
+        chatInput.focus();
+    }
+});
 </script>
 
 </body>
