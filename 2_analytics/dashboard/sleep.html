@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Sport Analytics — Sleep</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<link rel="stylesheet" href="dashboard.css" />
+
+</head>
+
+<body>
+
+<h1>Sleep</h1>
+<h3>Performance versus moon illumination and daily minimum temperature</h3>
+
+<nav class="topNav" aria-label="Dashboard pages">
+    <a href="index.html">Overview</a>
+    <a class="active" href="sleep.html">Sleep</a>
+    <a href="training.html">Training</a>
+</nav>
+
+<div class="pageControls">
+    <div class="granularityToggle" id="periodToggle">
+        <button class="toggleBtn active" data-period="30d">30d</button>
+        <button class="toggleBtn" data-period="90d">90d</button>
+        <button class="toggleBtn" data-period="1y">1y</button>
+        <button class="toggleBtn" data-period="all">All</button>
+    </div>
+    <p id="pageStatus"></p>
+</div>
+
+<div class="heroRow three">
+    <div class="tile">
+        <p class="label">Avg sleep performance</p>
+        <p class="value" id="sleepPerformanceValue">–</p>
+    </div>
+    <div class="tile">
+        <p class="label">Avg time asleep</p>
+        <p class="value" id="sleepDurationValue">–</p>
+    </div>
+    <div class="tile">
+        <p class="label">Avg sleep efficiency</p>
+        <p class="value" id="sleepEfficiencyValue">–</p>
+    </div>
+</div>
+
+<div class="panel">
+    <h2 class="sectionTitle"><span>Sleep performance per night</span></h2>
+    <p class="label" id="performanceCaption"></p>
+    <canvas id="sleepPerformanceChart" class="chart-box"></canvas>
+</div>
+
+<div class="panelRow">
+    <div class="panel">
+        <h2 class="sectionTitle"><span>Moon illumination</span></h2>
+        <p class="label" id="moonCaption"></p>
+        <canvas id="moonScatter" class="chart-box"></canvas>
+    </div>
+    <div class="panel">
+        <h2 class="sectionTitle"><span>Minimum temperature</span></h2>
+        <p class="label" id="temperatureCaption"></p>
+        <canvas id="temperatureScatter" class="chart-box"></canvas>
+    </div>
+</div>
+
+<div class="panel">
+    <h2 class="sectionTitle"><span>Average sleep performance by moon phase</span></h2>
+    <canvas id="moonPhaseChart" class="chart-box"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="dashboard-utils.js"></script>
+<script src="dashboard-page.js"></script>
+
+<script>
+const charts = {};
+const periodToggle = document.getElementById("periodToggle");
+let sleepRecords = [];
+
+function drawChart(canvasId, config) {
+    if (charts[canvasId]) charts[canvasId].destroy();
+    charts[canvasId] = new Chart(document.getElementById(canvasId), config);
+}
+
+function axis(title, extra = {}) {
+    return { grid: { color: GRID_COLOR }, title: { display: true, text: title }, ...extra };
+}
+
+function referenceDate(records) {
+    const dates = records.map((record) => calendarDate(record.date_day)).sort();
+    return dates.at(-1);
+}
+
+function correlationText(result) {
+    return `${result.label} · r ${result.r === null ? "unavailable" : result.r.toFixed(2)} · ${result.n} nights`;
+}
+
+function renderPerformanceChart(rows) {
+    drawChart("sleepPerformanceChart", {
+        type: "line",
+        data: {
+            labels: rows.map((row) => fmtDate(calendarDate(row.date_day))),
+            datasets: [{
+                data: rows.map((row) => row.sleep_performance),
+                borderColor: COLOR_SLEEP,
+                backgroundColor: COLOR_SLEEP,
+                borderWidth: 1,
+                pointRadius: 2,
+                tension: 0.2,
+            }],
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { ...TOOLTIP_STYLE, callbacks: { label: (ctx) => `Sleep performance: ${ctx.formattedValue}%` } },
+            },
+            scales: {
+                x: axis("Night", { ticks: { autoSkip: true, maxTicksLimit: 8 } }),
+                y: axis("Sleep performance (%)"),
+            },
+        },
+    });
+}
+
+function renderScatter(canvasId, pairs, color, xTitle, xUnit) {
+    drawChart(canvasId, {
+        type: "scatter",
+        data: { datasets: [{ data: pairs, backgroundColor: color + "aa", pointRadius: 3 }] },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    ...TOOLTIP_STYLE,
+                    callbacks: { label: (ctx) => `${ctx.parsed.x.toFixed(1)}${xUnit} · ${Math.round(ctx.parsed.y)}% performance` },
+                },
+            },
+            scales: { x: axis(xTitle), y: axis("Sleep performance (%)") },
+        },
+    });
+}
+
+function renderPhaseChart(phases) {
+    drawChart("moonPhaseChart", {
+        type: "bar",
+        data: {
+            labels: phases.map((phase) => phase.moon_phase),
+            datasets: [{ data: phases.map((phase) => phase.average_performance), backgroundColor: COLOR_SLEEP }],
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    ...TOOLTIP_STYLE,
+                    callbacks: {
+                        label: (ctx) => `${ctx.parsed.y.toFixed(0)}% avg · ${phases[ctx.dataIndex].nights} nights`,
+                    },
+                },
+            },
+            scales: { x: axis("Moon phase"), y: axis("Avg sleep performance (%)", { beginAtZero: true, max: 100 }) },
+        },
+    });
+}
+
+function clearPage() {
+    Object.values(charts).forEach((chart) => chart.destroy());
+    Object.keys(charts).forEach((key) => delete charts[key]);
+    for (const id of ["sleepPerformanceValue", "sleepDurationValue", "sleepEfficiencyValue"]) {
+        document.getElementById(id).textContent = "–";
+    }
+    for (const id of ["performanceCaption", "moonCaption", "temperatureCaption"]) {
+        document.getElementById(id).textContent = "";
+    }
+}
+
+function renderSleep(records, period) {
+    const episodes = mainSleepEpisodes(records);
+    const selected = episodes.length ? filterByPeriod(episodes, "date_day", period, referenceDate(episodes)) : [];
+    if (!selected.length) {
+        clearPage();
+        pageStatus.textContent = "No observations exist for this period.";
+        return;
+    }
+    pageStatus.textContent = "";
+    const performanceRows = selected.filter((record) => typeof record.sleep_performance === "number");
+    const performance = avgField(performanceRows, "sleep_performance");
+    sleepPerformanceValue.textContent = performance === null ? "–" : `${Math.round(performance)}%`;
+    const duration = avgField(selected, "asleep_duration_minutes");
+    sleepDurationValue.textContent = duration === null ? "–" : `${Math.floor(duration / 60)}h ${Math.round(duration % 60)}m`;
+    const efficiency = avgField(selected, "sleep_efficiency");
+    sleepEfficiencyValue.textContent = efficiency === null ? "–" : `${Math.round(efficiency)}%`;
+
+    performanceCaption.textContent = `${performanceRows.length} nights`;
+    renderPerformanceChart(performanceRows);
+
+    const moonPairs = pairedValues(performanceRows, "moon_illumination", "sleep_performance");
+    const temperaturePairs = pairedValues(performanceRows, "temperature_min_celsius", "sleep_performance");
+    moonCaption.textContent = correlationText(pearsonCorrelation(moonPairs));
+    temperatureCaption.textContent = `Daily minimum temperature proxy · ${correlationText(pearsonCorrelation(temperaturePairs))}`;
+    renderScatter("moonScatter", moonPairs, COLOR_SLEEP, "Moon illumination (%)", "% illuminated");
+    renderScatter("temperatureScatter", temperaturePairs, COLOR_WEATHER, "Daily minimum temperature (°C)", "°C");
+
+    renderPhaseChart(groupSleepPerformanceByMoonPhase(performanceRows));
+}
+
+wirePeriodToggle(periodToggle, (period) => renderSleep(sleepRecords, period));
+
+fetchJson("/sleep").then((records) => {
+    sleepRecords = records;
+    renderSleep(sleepRecords, activePeriod(periodToggle));
+}).catch(showLoadError);
+</script>
+
+</body>
+</html>
