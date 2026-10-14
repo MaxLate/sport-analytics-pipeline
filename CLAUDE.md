@@ -76,6 +76,8 @@ uv run uvicorn "2_analytics.dashboard.api:app" --reload
 cd 2_analytics/dashboard && python3 -m http.server 5500   # separate terminal, then open http://127.0.0.1:5500/
 ```
 
+Three pages (`index.html` Overview, `sleep.html`, `training.html`) share `dashboard.css` and `dashboard-page.js`. Data logic belongs in `dashboard-utils.js` as pure functions tested with `node --test 2_analytics/dashboard/test-dashboard-utils.js`; page scripts only render. Serve only `2_analytics/dashboard`, never the repo root: `config.yml` holds the WHOOP secrets.
+
 ### Airflow orchestration
 
 ```bash
@@ -113,7 +115,7 @@ DuckDB allows exactly one writer connection to a given `.duckdb` file at a time.
 
 Seeds (`seeds/activity_mapping.csv`, `seeds/mooncalender.csv`) provide manual mapping/lookup data joined into intermediate models. `activity_mapping.csv` is filtered to WHOOP-only rows (the source project also had Strava rows). `mooncalender.csv` covers 2024-01-01 through 2026-12-31 as ported — it will need regenerating (e.g. via the `astral` package's `astral.moon.phase()`) before it runs out; not yet automated.
 
-Weather data (`fct_weather_daily`) is modeled, tested, and wired into the dashboard's Weather panel.
+Weather data (`fct_weather_daily`) is modeled and tested. The dashboard's `/sleep` endpoint joins its `temperature_min_celsius` on `wake_up_date` for the Sleep page.
 
 Default materialization is `table`; staging is overridden to `view` (see `dbt_project.yml` `models:` block).
 

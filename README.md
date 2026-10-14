@@ -41,11 +41,11 @@ Recovery, sleep, and workout data via the WHOOP API (OAuth). One-time browser-ba
 
 ### Weather (Open-Meteo)
 
-Daily temperature, precipitation, wind, and sunshine data for the configured location via the free, keyless Open-Meteo API. A one-time historical backfill (`archive` endpoint) plus a daily incremental pull (`forecast` endpoint with a lookback window, so late corrections to recent days are picked up). Modeled and tested in dbt, exposed via `/weather` on the API and shown in the dashboard's Weather panel.
+Daily temperature, precipitation, wind, and sunshine data for the configured location via the free, keyless Open-Meteo API. A one-time historical backfill (`archive` endpoint) plus a daily incremental pull (`forecast` endpoint with a lookback window, so late corrections to recent days are picked up). Modeled and tested in dbt and exposed via `/weather` on the API. The dashboard uses it on the Sleep page, where each night's sleep performance is set against the wake-up day's minimum temperature.
 
 ### Moon phase
 
-Static seed (`1_elt/2_transform/seeds/mooncalender.csv`, 2024-01-01 through 2026-12-31), joined onto WHOOP sleep data by date. The dashboard's sleep panel has a moon-phase overlay for this, currently commented out (recovery/strain/workouts are not correlated against moon phase — that's WHOOP-only data with no obvious mechanism, so it's kept out of those panels to avoid implying a connection that isn't there).
+Static seed (`1_elt/2_transform/seeds/mooncalender.csv`, 2024-01-01 through 2026-12-31), joined onto WHOOP sleep data by date. The dashboard's Sleep page plots sleep performance against moon illumination and phase, and labels the result only as a Pearson association with its night count; it never claims cause. Recovery, strain and workouts are not set against moon phase at all.
 
 ## 🛠️ Tech Stack
 
@@ -218,4 +218,10 @@ Follow the WHOOP/weather pattern: `1_elt/0_extract/<source>/` (client + extract-
 
 ### Adding to the dashboard
 
-Add an endpoint to `2_analytics/dashboard/api.py`, then a render function in `index.html` using the existing `dashboard-utils.js` helpers (`computeKpiDeltas`, `groupByDay`/`groupByISOWeek`/`groupByMonth`) for consistent KPI tiles and granularity toggling.
+The dashboard has three pages that share `dashboard.css` and `dashboard-page.js` (API base, colours, load errors, period toggle):
+
+- `index.html` (Overview): four KPI tiles, Recovery and the chat panel
+- `sleep.html`: main sleeps only (naps excluded), with moon and temperature associations for 30 days, 90 days, 1 year or all time
+- `training.html`: training hours by activity, heart rate and strain per sport, and recent sessions; non-sport activities such as commuting are hidden unless "Include all activities" is ticked
+
+Data logic lives in `dashboard-utils.js` as pure functions with `node:test` coverage (`filterByPeriod`, `pearsonCorrelation`, `stackTrainingHours`, `computeKpiDeltas` and others). Add an endpoint to `2_analytics/dashboard/api.py`, put the calculation in `dashboard-utils.js` with a test, and keep the page script to rendering.
