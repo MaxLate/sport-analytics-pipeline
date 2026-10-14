@@ -31,3 +31,6 @@ __pycache__/
 3_orchestration/logs/
 3_orchestration/plugins/
 3_orchestration/.env
+
+# dbt log written when dbt is invoked from the repo root
+/logs/

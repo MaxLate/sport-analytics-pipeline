@@ -11,8 +11,9 @@ from pathlib import Path
 # Add project root to path (4 levels up: whoop -> 0_extract -> 1_elt -> project_root)
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
-from config_loader import Config  # noqa: E402
 from whoop import WhoopClient  # noqa: E402
+
+from config_loader import Config  # noqa: E402
 
 config = Config()
 start_date = config.whoop_backfill_start_date

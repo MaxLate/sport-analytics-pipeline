@@ -5,14 +5,24 @@ repos:
       - id: black
         language_version: python3.12
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
+  # ruff and sqlfluff run from the uv environment, so pre-commit and CI use
+  # the versions pinned in uv.lock.
+  - repo: local
     hooks:
       - id: ruff
-        args: [--fix]
-
-  - repo: https://github.com/sqlfluff/sqlfluff
-    rev: 3.2.5
-    hooks:
+        name: ruff
+        entry: uv run ruff check --fix
+        language: system
+        types: [python]
       - id: sqlfluff-lint
+        name: sqlfluff lint
+        entry: uv run sqlfluff lint
+        language: system
+        types: [sql]
+        files: ^1_elt/2_transform/models/
       - id: sqlfluff-fix
+        name: sqlfluff fix
+        entry: uv run sqlfluff fix
+        language: system
+        types: [sql]
+        files: ^1_elt/2_transform/models/

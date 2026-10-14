@@ -52,7 +52,6 @@ from typing import Any
 
 from authlib.integrations.requests_client import OAuth2Session
 
-
 AUTH_URL = "https://api.prod.whoop.com"
 # Base URL for API requests. WHOOP API now uses V2 endpoints
 # IMPORTANT: v1 webhooks have been removed. V2 endpoints are the current standard.

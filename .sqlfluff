@@ -11,7 +11,7 @@ library_path = sqlfluff/sqlfluff_libs
 tab_space_size = 4
 indent_unit = space
 indented_using_on = False
-allow_implicit_indents = True
+implicit_indents = allow
 template_blocks_indent = False
 trailing_comments = after
 

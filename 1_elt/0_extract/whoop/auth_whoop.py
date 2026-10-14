@@ -4,15 +4,16 @@
 ##### Run this once to get your refresh token.                               #####
 ##################################################################################
 
-import requests
-import webbrowser
-from urllib.parse import urlencode, urlparse, parse_qs
+import secrets
 import sys
-from pathlib import Path
-from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 import time
-import secrets
+import webbrowser
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
+from urllib.parse import parse_qs, urlencode, urlparse
+
+import requests
 
 # Add project root to path to import config_loader
 # Add project root to path (4 levels up: whoop -> 0_extract -> 1_elt -> project_root)
@@ -77,9 +78,7 @@ class CallbackHandler(BaseHTTPRequestHandler):
                 <p>You can close this window and return to the terminal.</p>
             </body>
             </html>
-            """.encode(
-                    "utf-8"
-                )
+            """.encode()
             )
         elif "error" in query_params:
             CallbackHandler.error = query_params["error"][0]
@@ -115,7 +114,6 @@ class CallbackHandler(BaseHTTPRequestHandler):
 
     def log_message(self, format, *args):
         """Suppress default logging"""
-        pass
 
 
 def start_callback_server(port=8000):
