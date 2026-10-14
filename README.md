@@ -70,7 +70,10 @@ Static seed (`1_elt/2_transform/seeds/mooncalender.csv`, 2024-01-01 through 2026
 │   ├── 1_load/{whoop,weather}/
 │   └── 2_transform/         # dbt project
 ├── 2_analytics/
-│   └── dashboard/           # FastAPI + static HTML operations dashboard
+│   ├── api/                 # FastAPI app (main.py), read-only over the marts
+│   ├── chat/                # LLM module: agents, SQL guard, query tool, semantic layer
+│   ├── dashboard/           # static frontend: 3 HTML pages, CSS, JS (the only folder served)
+│   └── tests/               # pytest + node tests for the API, chat and dashboard JS
 ├── 3_orchestration/         # Airflow (docker-compose, DAG)
 ├── config_sample.yml        # copy to config.yml and fill in credentials
 ├── config_loader.py
@@ -140,7 +143,7 @@ dbt deps
 dbt build        # seeds, models and tests for all layers
 
 # Dashboard
-uv run uvicorn "2_analytics.dashboard.api:app" --reload
+uv run uvicorn "2_analytics.api.main:app" --reload
 cd 2_analytics/dashboard && python3 -m http.server 5500   # then open http://127.0.0.1:5500/
 
 # Orchestration (optional — runs the whole pipeline daily)
@@ -166,7 +169,7 @@ Key tables (in `warehouse.duckdb`):
 
 ## 💬 Ask your data (LLM module)
 
-The dashboard has a chat panel (`POST /chat`) that answers questions from the marts. It is built around a small semantic layer, `2_analytics/dashboard/semantic_layer.yml`, written in the shape of dbt semantic models: each mart declares its grain, columns, entities (join keys) and measures. It is a hand-written YAML read by Python, not dbt's MetricFlow.
+The dashboard has a chat panel (`POST /chat`) that answers questions from the marts. It is built around a small semantic layer, `2_analytics/chat/semantic_layer.yml`, written in the shape of dbt semantic models: each mart declares its grain, columns, entities (join keys) and measures. It is a hand-written YAML read by Python, not dbt's MetricFlow.
 
 A question goes through two paths:
 
@@ -187,10 +190,10 @@ Guardrails:
 dbt test
 
 # Dashboard and chat (API, SQL guard, query tool, semantic layer)
-uv run pytest 2_analytics/dashboard
+uv run pytest 2_analytics/tests
 
 # Dashboard JS unit tests
-node 2_analytics/dashboard/test-dashboard-utils.js
+node --test 2_analytics/tests/test-dashboard-utils.js
 ```
 
 ## 🔁 CI/CD (GitHub Actions)
@@ -224,4 +227,4 @@ The dashboard has three pages that share `dashboard.css` and `dashboard-page.js`
 - `sleep.html`: main sleeps only (naps excluded), with moon and temperature associations for 30 days, 90 days, 1 year or all time
 - `training.html`: training hours by activity, heart rate and strain per sport, and recent sessions; non-sport activities such as commuting are hidden unless "Include all activities" is ticked
 
-Data logic lives in `dashboard-utils.js` as pure functions with `node:test` coverage (`filterByPeriod`, `pearsonCorrelation`, `stackTrainingHours`, `computeKpiDeltas` and others). Add an endpoint to `2_analytics/dashboard/api.py`, put the calculation in `dashboard-utils.js` with a test, and keep the page script to rendering.
+Data logic lives in `dashboard-utils.js` as pure functions with `node:test` coverage (`filterByPeriod`, `pearsonCorrelation`, `stackTrainingHours`, `computeKpiDeltas` and others). Add an endpoint to `2_analytics/api/main.py`, put the calculation in `dashboard-utils.js` with a test in `2_analytics/tests/`, and keep the page script to rendering.

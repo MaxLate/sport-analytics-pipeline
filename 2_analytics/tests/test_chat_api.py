@@ -11,9 +11,9 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-api = importlib.import_module("2_analytics.dashboard.api")
-chat_runner = importlib.import_module("2_analytics.dashboard.chat_runner")
-agents = importlib.import_module("2_analytics.dashboard.chat_agents")
+api = importlib.import_module("2_analytics.api.main")
+chat_runner = importlib.import_module("2_analytics.chat.runner")
+agents = importlib.import_module("2_analytics.chat.agents")
 
 ChatResult = chat_runner.ChatResult
 ChatUnavailable = chat_runner.ChatUnavailable

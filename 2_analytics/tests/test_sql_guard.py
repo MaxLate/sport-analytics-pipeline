@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-sql_guard = importlib.import_module("2_analytics.dashboard.sql_guard")
+sql_guard = importlib.import_module("2_analytics.chat.sql_guard")
 SqlRejected = sql_guard.SqlRejected
 validate_readonly_sql = sql_guard.validate_readonly_sql
 

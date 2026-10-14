@@ -1,4 +1,4 @@
-// Run: node 2_analytics/dashboard/test-dashboard-utils.js
+// Run: node --test 2_analytics/tests/test-dashboard-utils.js
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
@@ -24,7 +24,7 @@ const {
   periodStart,
   compareSports,
   recentSessions,
-} = require("./dashboard-utils.js");
+} = require("../dashboard/dashboard-utils.js");
 
 test("avgField ignores null and undefined", () => {
   const records = [{ v: 10 }, { v: null }, { v: 20 }, { v: undefined }];

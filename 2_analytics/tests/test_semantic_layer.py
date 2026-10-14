@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-semantic_layer = importlib.import_module("2_analytics.dashboard.semantic_layer")
+semantic_layer = importlib.import_module("2_analytics.chat.semantic_layer")
 lookup_question = semantic_layer.lookup_question
 compile_question = semantic_layer.compile_question
 format_metric_answer = semantic_layer.format_metric_answer

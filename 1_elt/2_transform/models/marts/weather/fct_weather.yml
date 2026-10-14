@@ -2,8 +2,8 @@ models:
   - name: fct_weather_daily
     description: |
       Fact table with one row per calendar day of local weather (Open-Meteo).
-      Surfaced in the dashboard's Weather panel, and available to join on
-      date_day against any WHOOP fact table for analysis.
+      The dashboard's Sleep page uses temperature_min_celsius, joined on the
+      wake-up date; available to join on date_day against any WHOOP fact table.
     materialized: table
     columns:
       - name: date_day

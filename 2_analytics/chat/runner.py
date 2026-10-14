@@ -10,7 +10,7 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
-from .chat_agents import DB_PATH, build_pipeline
+from .agents import DB_PATH, build_pipeline
 from .query_tool import QueryFailed, execute_readonly_query
 from .semantic_layer import allowed_tables, compile_question, format_metric_answer
 from .sql_guard import SqlRejected

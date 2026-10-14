@@ -11,8 +11,8 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-query_tool = importlib.import_module("2_analytics.dashboard.query_tool")
-sql_guard = importlib.import_module("2_analytics.dashboard.sql_guard")
+query_tool = importlib.import_module("2_analytics.chat.query_tool")
+sql_guard = importlib.import_module("2_analytics.chat.sql_guard")
 
 execute_readonly_query = query_tool.execute_readonly_query
 SqlRejected = sql_guard.SqlRejected

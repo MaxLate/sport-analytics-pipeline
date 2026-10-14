@@ -8,8 +8,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from .chat_agents import DB_PATH
-from .chat_runner import ChatUnavailable, run_chat
+from ..chat.agents import DB_PATH
+from ..chat.runner import ChatUnavailable, run_chat
 
 DUCKDB_PATH = str(DB_PATH)
 

@@ -1,7 +1,7 @@
 Introduction to run: dashboard
 
 1. Start the API (from project root directory):
-    - uv run uvicorn "2_analytics.dashboard.api:app" --reload
+    - uv run uvicorn "2_analytics.api.main:app" --reload
     - API will run on: http://127.0.0.1:8000
 
 2. Start the HTML server (from 2_analytics/dashboard/ directory):

@@ -49,7 +49,7 @@ jobs:
         run: uv run pytest
 
       - name: Dashboard JS tests
-        run: node 2_analytics/dashboard/test-dashboard-utils.js
+        run: node 2_analytics/tests/test-dashboard-utils.js
 
   airflow-image:
     name: Airflow image builds and DAGs import

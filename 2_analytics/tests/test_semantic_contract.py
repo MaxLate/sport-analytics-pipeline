@@ -12,8 +12,8 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-semantic_layer = importlib.import_module("2_analytics.dashboard.semantic_layer")
-chat_agents = importlib.import_module("2_analytics.dashboard.chat_agents")
+semantic_layer = importlib.import_module("2_analytics.chat.semantic_layer")
+chat_agents = importlib.import_module("2_analytics.chat.agents")
 
 ACTIVITY_SEED = ROOT / "1_elt" / "2_transform" / "seeds" / "activity_mapping.csv"
 

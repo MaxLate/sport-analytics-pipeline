@@ -72,11 +72,13 @@ pre-commit run --all-files   # black (Python) + ruff (Python lint) + sqlfluff li
 ### Dashboard
 
 ```bash
-uv run uvicorn "2_analytics.dashboard.api:app" --reload
+uv run uvicorn "2_analytics.api.main:app" --reload
 cd 2_analytics/dashboard && python3 -m http.server 5500   # separate terminal, then open http://127.0.0.1:5500/
 ```
 
-Three pages (`index.html` Overview, `sleep.html`, `training.html`) share `dashboard.css` and `dashboard-page.js`. Data logic belongs in `dashboard-utils.js` as pure functions tested with `node --test 2_analytics/dashboard/test-dashboard-utils.js`; page scripts only render. Serve only `2_analytics/dashboard`, never the repo root: `config.yml` holds the WHOOP secrets.
+`2_analytics/` is split by role: `api/` (FastAPI, `main.py`), `chat/` (LLM module and `semantic_layer.yml`), `dashboard/` (static frontend only) and `tests/` (pytest plus `node --test 2_analytics/tests/test-dashboard-utils.js`). `api` imports `chat` relatively (`from ..chat.agents import DB_PATH`); tests import via `importlib.import_module("2_analytics.<pkg>.<module>")` because the folder name starts with a digit.
+
+Three pages (`index.html` Overview, `sleep.html`, `training.html`) share `dashboard.css` and `dashboard-page.js`. Data logic belongs in `dashboard-utils.js` as pure functions with node tests; page scripts only render. Serve only `2_analytics/dashboard`, never the repo root: `config.yml` holds the WHOOP secrets.
 
 ### Airflow orchestration
 
@@ -103,7 +105,7 @@ Model schema placement is driven by `macros/generate_schema_name.sql`: a model's
 
 ### DuckDB single-writer constraint
 
-DuckDB allows exactly one writer connection to a given `.duckdb` file at a time. Within the Airflow DAG this is naturally fine (loads and dbt runs against the same file are already sequenced). It does matter for the dashboard API: `2_analytics/dashboard/api.py` opens a fresh `duckdb.connect(path, read_only=True)` per request rather than holding a long-lived connection, so it never contends with an Airflow write in progress — if you see a lock error from the API while a pipeline run is active, that's why; just retry.
+DuckDB allows exactly one writer connection to a given `.duckdb` file at a time. Within the Airflow DAG this is naturally fine (loads and dbt runs against the same file are already sequenced). It does matter for the dashboard API: `2_analytics/api/main.py` opens a fresh `duckdb.connect(path, read_only=True)` per request rather than holding a long-lived connection, so it never contends with an Airflow write in progress — if you see a lock error from the API while a pipeline run is active, that's why; just retry.
 
 ### Model layers (Kimball-ish dimensional modeling)
 

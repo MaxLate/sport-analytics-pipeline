@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-api = importlib.import_module("2_analytics.dashboard.api")
+api = importlib.import_module("2_analytics.api.main")
 
 
 @pytest.mark.skipif(not Path(api.DUCKDB_PATH).exists(), reason="warehouse not built")
