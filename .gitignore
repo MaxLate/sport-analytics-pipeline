@@ -15,8 +15,9 @@ __pycache__/
 
 # dont show raw data and database files
 0_data/database/
-0_data/raw/whoop/
-0_data/raw/weather/
+0_data/raw/
+*.duckdb
+*.duckdb.wal
 
 # dbt artifacts
 1_elt/2_transform/target/
