@@ -53,35 +53,57 @@ def get_recovery():
     return to_json_records(df)
 
 
+# Weather joins on wake_up_date: the minimum temperature of the wake-up day
+# is the closest daily proxy for the preceding night.
+SLEEP_SQL = """
+SELECT
+    s.date_day,
+    q.wake_up_date,
+    s.asleep_duration_minutes,
+    s.in_bed_duration_minutes,
+    s.light_sleep_duration_minutes,
+    s.deep_sleep_duration_minutes,
+    s.rem_duration_minutes,
+    s.awake_duration_minutes,
+    q.sleep_performance,
+    q.sleep_efficiency,
+    q.sleep_consistency,
+    q.sleep_debt_minutes,
+    q.nap,
+    q.moon_phase,
+    q.moon_illumination,
+    q.moon_phase_cycle,
+    w.temperature_min_celsius
+FROM marts.fct_whoop_sleeps s
+LEFT JOIN marts.fct_whoop_sleep_quality q ON s.sleep_id = q.sleep_id
+LEFT JOIN marts.fct_weather_daily w ON q.wake_up_date = w.date_day
+WHERE s.asleep_duration_minutes IS NOT NULL
+ORDER BY s.date_day
+"""
+
+WORKOUTS_SQL = """
+SELECT
+    date_day,
+    workout_start_time,
+    activity_name,
+    is_sport_exercise,
+    duration_minutes,
+    activity_strain,
+    kilojoule,
+    average_heart_rate,
+    max_heart_rate
+FROM marts.fct_whoop_workouts
+WHERE activity_strain IS NOT NULL
+ORDER BY workout_start_time
+"""
+
+
 @app.get("/sleep")
 def get_sleep():
-    """Returns sleep duration + quality metrics joined by sleep_id, including
-    moon phase (already attached per-night via the moon seed join), as JSON."""
+    """Returns sleep duration + quality metrics joined by sleep_id, with moon
+    phase and the wake-up day's minimum temperature, as JSON."""
     con = duckdb.connect(DUCKDB_PATH, read_only=True)
-    df = con.execute(
-        """
-        SELECT
-            s.date_day,
-            s.asleep_duration_minutes,
-            s.in_bed_duration_minutes,
-            s.light_sleep_duration_minutes,
-            s.deep_sleep_duration_minutes,
-            s.rem_duration_minutes,
-            s.awake_duration_minutes,
-            q.sleep_performance,
-            q.sleep_efficiency,
-            q.sleep_consistency,
-            q.sleep_debt_minutes,
-            q.nap,
-            q.moon_phase,
-            q.moon_illumination,
-            q.moon_phase_cycle
-        FROM marts.fct_whoop_sleeps s
-        LEFT JOIN marts.fct_whoop_sleep_quality q ON s.sleep_id = q.sleep_id
-        WHERE s.asleep_duration_minutes IS NOT NULL
-        ORDER BY s.date_day
-        """
-    ).fetchdf()
+    df = con.execute(SLEEP_SQL).fetchdf()
     con.close()
 
     return to_json_records(df)
@@ -91,23 +113,7 @@ def get_sleep():
 def get_workouts():
     """Returns the full workouts dataset as JSON."""
     con = duckdb.connect(DUCKDB_PATH, read_only=True)
-    df = con.execute(
-        """
-        SELECT
-            date_day,
-            workout_start_time,
-            activity_name,
-            is_sport_exercise,
-            duration_minutes,
-            activity_strain,
-            kilojoule,
-            average_heart_rate,
-            max_heart_rate
-        FROM marts.fct_whoop_workouts
-        WHERE activity_strain IS NOT NULL
-        ORDER BY workout_start_time
-        """
-    ).fetchdf()
+    df = con.execute(WORKOUTS_SQL).fetchdf()
     con.close()
 
     return to_json_records(df)
