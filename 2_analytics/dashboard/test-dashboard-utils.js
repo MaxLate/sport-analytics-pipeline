@@ -12,6 +12,17 @@ const {
   groupByDay,
   groupByISOWeek,
   groupByMonth,
+  calendarDate,
+  filterByPeriod,
+  mainSleepEpisodes,
+  pairedValues,
+  pearsonCorrelation,
+  groupSleepPerformanceByMoonPhase,
+  filterTrainingActivities,
+  summarizeTraining,
+  stackTrainingHours,
+  compareSports,
+  recentSessions,
 } = require("./dashboard-utils.js");
 
 test("avgField ignores null and undefined", () => {
@@ -179,4 +190,187 @@ test("groupByPeriod functions sort buckets ascending regardless of input order",
   const out = groupByDay(records, "date_day", ["v"]);
   assert.equal(out[0].bucketStart, "2026-08-01");
   assert.equal(out[1].bucketStart, "2026-08-10");
+});
+
+// --- Period filtering and sleep-episode selection ---------------------------
+
+test("calendarDate keeps the calendar day from an ISO timestamp", () => {
+  assert.equal(calendarDate("2026-09-24T00:00:00"), "2026-09-24");
+});
+
+test("filterByPeriod 30d includes the boundary date and excludes the day before it", () => {
+  const records = [
+    { date_day: "2026-08-29" },
+    { date_day: "2026-08-30T00:00:00" },
+    { date_day: "2026-09-28" },
+    { date_day: "2026-09-29" },
+  ];
+  const filtered = filterByPeriod(records, "date_day", "30d", "2026-09-28");
+  assert.deepEqual(filtered.map((r) => calendarDate(r.date_day)), ["2026-08-30", "2026-09-28"]);
+});
+
+test("filterByPeriod 90d includes 2026-07-01 and excludes 2026-06-30", () => {
+  const records = [{ date_day: "2026-06-30" }, { date_day: "2026-07-01" }, { date_day: "2026-09-28" }];
+  const filtered = filterByPeriod(records, "date_day", "90d", "2026-09-28");
+  assert.deepEqual(filtered.map((r) => calendarDate(r.date_day)), ["2026-07-01", "2026-09-28"]);
+});
+
+test("filterByPeriod 1y includes the same calendar date one year earlier", () => {
+  const records = [
+    { date_day: "2025-09-27" },
+    { date_day: "2025-09-28" },
+    { date_day: "2026-09-28" },
+  ];
+  const filtered = filterByPeriod(records, "date_day", "1y", "2026-09-28");
+  assert.deepEqual(filtered.map((r) => calendarDate(r.date_day)), ["2025-09-28", "2026-09-28"]);
+});
+
+test("filterByPeriod all keeps every date through the reference date", () => {
+  const records = [{ date_day: "2020-01-01" }, { date_day: "2026-09-29" }];
+  const filtered = filterByPeriod(records, "date_day", "all", "2026-09-28");
+  assert.deepEqual(filtered.map((r) => calendarDate(r.date_day)), ["2020-01-01"]);
+});
+
+test("mainSleepEpisodes keeps only nap === false", () => {
+  const records = [{ nap: false, id: 1 }, { nap: true, id: 2 }, { nap: null, id: 3 }];
+  assert.deepEqual(mainSleepEpisodes(records).map((r) => r.id), [1]);
+});
+
+// --- Correlation and moon-phase grouping -------------------------------------
+
+test("pairedValues drops a null on either axis and keeps the other records", () => {
+  const records = [
+    { moon_illumination: 10, sleep_performance: 80, temperature_min_celsius: null },
+    { moon_illumination: null, sleep_performance: 70, temperature_min_celsius: 5 },
+    { moon_illumination: 90, sleep_performance: 60, temperature_min_celsius: 12 },
+  ];
+  assert.deepEqual(pairedValues(records, "moon_illumination", "sleep_performance"), [
+    { x: 10, y: 80 },
+    { x: 90, y: 60 },
+  ]);
+  assert.deepEqual(pairedValues(records, "temperature_min_celsius", "sleep_performance"), [
+    { x: 5, y: 70 },
+    { x: 12, y: 60 },
+  ]);
+});
+
+test("pearsonCorrelation returns signed r and the association label", () => {
+  const positive = pearsonCorrelation([
+    { x: 1, y: 2 },
+    { x: 2, y: 4 },
+    { x: 3, y: 6 },
+  ]);
+  assert.equal(positive.n, 3);
+  assert.equal(positive.r, 1);
+  assert.equal(positive.label, "strong association");
+
+  const weak = pearsonCorrelation([
+    { x: 1, y: 1 },
+    { x: 2, y: 1 },
+    { x: 3, y: 2 },
+    { x: 4, y: 1 },
+  ]);
+  assert.equal(Number(weak.r.toFixed(4)), 0.2582);
+  assert.equal(weak.label, "weak association");
+
+  const negative = pearsonCorrelation([
+    { x: 1, y: 6 },
+    { x: 2, y: 4 },
+    { x: 3, y: 2 },
+  ]);
+  assert.equal(negative.r, -1);
+  assert.equal(negative.label, "strong association");
+});
+
+test("pearsonCorrelation is unavailable for too few points or zero variance", () => {
+  assert.equal(pearsonCorrelation([{ x: 1, y: 2 }, { x: 2, y: 3 }]).r, null);
+  assert.equal(pearsonCorrelation([{ x: 1, y: 2 }, { x: 1, y: 3 }, { x: 1, y: 4 }]).label, "unavailable");
+});
+
+test("groupSleepPerformanceByMoonPhase averages performance and omits empty phases", () => {
+  const grouped = groupSleepPerformanceByMoonPhase([
+    { moon_phase: "Full Moon", sleep_performance: 80 },
+    { moon_phase: "Full Moon", sleep_performance: 60 },
+    { moon_phase: null, sleep_performance: 50 },
+    { moon_phase: "New Moon", sleep_performance: null },
+  ]);
+  assert.deepEqual(grouped, [{ moon_phase: "Full Moon", nights: 2, average_performance: 70 }]);
+});
+
+// --- Training aggregation ----------------------------------------------------
+
+test("filterTrainingActivities defaults to sport and can include every activity", () => {
+  const records = [
+    { activity_name: "Run", is_sport_exercise: true },
+    { activity_name: "Commuting", is_sport_exercise: false },
+  ];
+  assert.equal(filterTrainingActivities(records, false).length, 1);
+  assert.equal(filterTrainingActivities(records, true).length, 2);
+});
+
+test("summarizeTraining totals hours and uses the highest heart rate", () => {
+  const summary = summarizeTraining([
+    { duration_minutes: 60, activity_strain: 10, max_heart_rate: 170 },
+    { duration_minutes: 30, activity_strain: 4, max_heart_rate: 150 },
+  ]);
+  assert.equal(summary.hours, 1.5);
+  assert.equal(summary.sessions, 2);
+  assert.equal(summary.averageStrain, 7);
+  assert.equal(summary.peakHeartRate, 170);
+});
+
+test("stackTrainingHours keeps eight activities and groups the rest as Other", () => {
+  const records = [];
+  for (let index = 1; index <= 9; index += 1) {
+    records.push({
+      date_day: "2026-09-01",
+      activity_name: `Sport ${index}`,
+      duration_minutes: (10 - index) * 60,
+    });
+  }
+  const stacked = stackTrainingHours(records, "day");
+  const names = stacked[0].series.map((series) => series.activity_name);
+  assert.deepEqual(names, [
+    "Sport 1", "Sport 2", "Sport 3", "Sport 4",
+    "Sport 5", "Sport 6", "Sport 7", "Sport 8", "Other",
+  ]);
+  assert.equal(stacked[0].series.at(-1).hours, 1);
+});
+
+test("stackTrainingHours uses Monday as the ISO-week bucket", () => {
+  const stacked = stackTrainingHours([
+    { date_day: "2026-09-21", activity_name: "Run", duration_minutes: 30 },
+    { date_day: "2026-09-27", activity_name: "Run", duration_minutes: 30 },
+  ], "week");
+  assert.equal(stacked.length, 1);
+  assert.equal(stacked[0].bucketStart, "2026-09-21");
+  assert.equal(stacked[0].series[0].hours, 1);
+});
+
+test("stackTrainingHours uses the first of the month as the month bucket", () => {
+  const stacked = stackTrainingHours([
+    { date_day: "2026-09-30T00:00:00", activity_name: "Run", duration_minutes: 60 },
+    { date_day: "2026-10-01T00:00:00", activity_name: "Run", duration_minutes: 60 },
+  ], "month");
+  assert.deepEqual(stacked.map((bucket) => bucket.bucketStart), ["2026-09-01", "2026-10-01"]);
+});
+
+test("compareSports orders by total duration", () => {
+  const compared = compareSports([
+    { activity_name: "HIIT", duration_minutes: 30, average_heart_rate: 150, max_heart_rate: 180, activity_strain: 12 },
+    { activity_name: "Run", duration_minutes: 120, average_heart_rate: 140, max_heart_rate: 175, activity_strain: 8 },
+  ]);
+  assert.equal(compared[0].activity_name, "Run");
+  assert.equal(compared[0].hours, 2);
+  assert.equal(compared[0].maxHeartRate, 175);
+});
+
+test("recentSessions returns the newest twenty sessions", () => {
+  const records = Array.from({ length: 25 }, (_, index) => ({
+    workout_start_time: `2026-09-${String(index + 1).padStart(2, "0")}T08:00:00`,
+    activity_name: "Run",
+  }));
+  const recent = recentSessions(records);
+  assert.equal(recent.length, 20);
+  assert.equal(recent[0].workout_start_time, "2026-09-25T08:00:00");
 });
