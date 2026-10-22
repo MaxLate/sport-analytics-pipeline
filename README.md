@@ -9,8 +9,7 @@
 
 An end-to-end analytics engineering project: WHOOP fitness data and local weather are extracted from their APIs, loaded into DuckDB, modelled with dbt into a Kimball-style star schema, orchestrated daily with Airflow, and served through a FastAPI backend to a three-page dashboard with a semantic-layer chat ("Ask your data").
 
-> [!NOTE]
-> **Who built what.** I built the Airflow orchestration, the dbt models and tests, the DuckDB warehouse and the Google ADK agents myself. The rest was built with AI assistance, in particular the API that connects the LLM agents to the dashboard and the dashboard website itself (HTML, CSS and JavaScript).
+> ℹ️ **Who built what:** I built the Airflow orchestration, the dbt models and tests, the DuckDB warehouse and the Google ADK agents myself. The rest was built with AI, in particular the API that connects the LLM agents to the dashboard and the dashboard website itself (HTML, CSS and JavaScript).
 
 ![Dashboard tour](docs/images/dashboard-tour.gif)
 
