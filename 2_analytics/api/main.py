@@ -85,13 +85,20 @@ WORKOUTS_SQL = """
 SELECT
     date_day,
     workout_start_time,
+    workout_start_time_local,
     activity_name,
     is_sport_exercise,
     duration_minutes,
     activity_strain,
     kilojoule,
     average_heart_rate,
-    max_heart_rate
+    max_heart_rate,
+    zone_zero_milli,
+    zone_one_milli,
+    zone_two_milli,
+    zone_three_milli,
+    zone_four_milli,
+    zone_five_milli
 FROM marts.fct_whoop_workouts
 WHERE activity_strain IS NOT NULL
 ORDER BY workout_start_time

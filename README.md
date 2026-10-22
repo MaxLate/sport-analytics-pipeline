@@ -126,7 +126,15 @@ Three pages built with static HTML and Chart.js, with no build step. Data logic 
 
 - **Overview:** KPI tiles (recovery, sleep performance, strain, resting heart rate) with 7-day and 30-day deltas, a recovery trend by day, week or month, and the "Ask your data" chat.
 - **Sleep:** sleep performance per night with the moon phase as emoji, sleep performance against moon illumination and against minimum temperature (Pearson association with night count, never a causal claim), and average sleep time per moon phase.
-- **Training:** stacked training hours per activity, heart rate and strain by sport, and recent sessions. Non-sport activities are hidden unless "Include all activities" is ticked.
+- **Training:**
+  - stacked training hours per activity
+  - heart-rate zone mix per period, with an easy/moderate/hard split checked against the 80/20 guideline
+  - heart rate and strain by sport
+  - a weekday × local-hour punchcard of when you train
+  - training versus local weather: by temperature band and on rainy vs dry days, counting days without training
+  - recent sessions
+
+  Non-sport activities are hidden unless "Include all activities" is ticked.
 
 ## 📦 Data Sources
 

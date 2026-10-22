@@ -12,7 +12,7 @@
 <body>
 
 <h1>Training</h1>
-<h3>Training hours, heart rate and strain by activity</h3>
+<h3>Training hours, intensity, timing and weather by activity</h3>
 
 <nav class="topNav" aria-label="Dashboard pages">
     <a href="index.html">Overview</a>
@@ -55,6 +55,12 @@
     <canvas id="hoursChart" class="chart-box"></canvas>
 </div>
 
+<div class="panel">
+    <h2 class="sectionTitle"><span>Heart-rate zone mix</span></h2>
+    <p class="label" id="zoneCaption"></p>
+    <canvas id="zoneChart" class="chart-box"></canvas>
+</div>
+
 <div class="panelRow">
     <div class="panel">
         <h2 class="sectionTitle"><span>Heart rate by activity</span></h2>
@@ -63,6 +69,25 @@
     <div class="panel">
         <h2 class="sectionTitle"><span>Avg strain by activity</span></h2>
         <canvas id="strainBySportChart" class="chart-box"></canvas>
+    </div>
+</div>
+
+<div class="panel">
+    <h2 class="sectionTitle"><span>When you train</span></h2>
+    <p class="label" id="punchcardCaption"></p>
+    <canvas id="punchcardChart" class="chart-box"></canvas>
+</div>
+
+<div class="panelRow">
+    <div class="panel">
+        <h2 class="sectionTitle"><span>Training by temperature</span></h2>
+        <p class="label" id="temperatureCaption"></p>
+        <canvas id="temperatureChart" class="chart-box"></canvas>
+    </div>
+    <div class="panel">
+        <h2 class="sectionTitle"><span>Rain vs dry days</span></h2>
+        <p class="label" id="rainCaption"></p>
+        <canvas id="rainChart" class="chart-box"></canvas>
     </div>
 </div>
 
@@ -94,6 +119,7 @@ const charts = {};
 const periodToggle = document.getElementById("periodToggle");
 const includeAllActivities = document.getElementById("includeAllActivities");
 let workoutRecords = [];
+let weatherRecords = [];
 
 function drawChart(canvasId, config) {
     if (charts[canvasId]) charts[canvasId].destroy();
@@ -170,8 +196,8 @@ function renderSportCharts(sports) {
         data: {
             labels,
             datasets: [
-                { label: "Avg HR", data: sports.map((sport) => sport.averageHeartRate), backgroundColor: COLOR_STRAIN },
-                { label: "Max HR", data: sports.map((sport) => sport.maxHeartRate), backgroundColor: COLOR_STRAIN + "55" },
+                { label: "Avg HR", data: sports.map((sport) => sport.averageHeartRate), backgroundColor: COLOR_CORAL },
+                { label: "Max HR", data: sports.map((sport) => sport.maxHeartRate), backgroundColor: COLOR_CORAL + "55" },
             ],
         },
         options: {
@@ -188,7 +214,7 @@ function renderSportCharts(sports) {
         type: "bar",
         data: {
             labels,
-            datasets: [{ label: "Avg strain", data: sports.map((sport) => sport.averageStrain), backgroundColor: COLOR_RECOVERY }],
+            datasets: [{ label: "Avg strain", data: sports.map((sport) => sport.averageStrain), backgroundColor: COLOR_MINT }],
         },
         options: {
             indexAxis: "y",
@@ -200,6 +226,153 @@ function renderSportCharts(sports) {
             scales: { x: axis("WHOOP strain (0–21)", { beginAtZero: true }), y: axis("Activity") },
         },
     });
+}
+
+const ZONE_LABELS = ["Zone 1", "Zone 2", "Zone 3", "Zone 4", "Zone 5"];
+const ZONE_COLORS = ["#a8e6cf", "#6fd6b0", "#f2c48d", "#f19a7a", "#e66767"];
+const COLOR_CORAL = ZONE_COLORS[3];
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const COLOR_MINT = CATEGORICAL[0];
+const COLOR_LAVENDER = CATEGORICAL[3];
+
+function renderZoneMix(records, bucket, range) {
+    const mix = zoneMixByBucket(records, bucket, range);
+    const split = intensitySplit(records);
+    zoneCaption.textContent = split
+        ? `${Math.round(split.easy)}% easy (zones 1–2) · ${Math.round(split.moderate)}% moderate (zone 3) · ${Math.round(split.hard)}% hard (zones 4–5) · 80/20 guideline: ~80% easy · zone 0 excluded`
+        : "No heart-rate zone data for this period.";
+    drawChart("zoneChart", {
+        type: "bar",
+        data: {
+            labels: mix.map((row) => bucketLabel(row.bucketStart, bucket)),
+            datasets: ZONE_LABELS.map((label, index) => ({
+                label,
+                data: mix.map((row) => row.shares[index]),
+                minutes: mix.map((row) => row.minutes[index]),
+                backgroundColor: ZONE_COLORS[index],
+            })),
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: "bottom", labels: { color: TICK_COLOR, boxWidth: 12 } },
+                tooltip: {
+                    ...TOOLTIP_STYLE,
+                    filter: (item) => item.parsed.y > 0,
+                    callbacks: {
+                        label: (ctx) => `${ctx.dataset.label}: ${Math.round(ctx.parsed.y)}% · ${Math.round(ctx.dataset.minutes[ctx.dataIndex])} min`,
+                    },
+                },
+            },
+            scales: {
+                x: axis("Period", { stacked: true, ticks: { autoSkip: true, maxTicksLimit: 12 } }),
+                y: axis("Share of zone 1–5 time (%)", { stacked: true, beginAtZero: true, max: 100 }),
+            },
+        },
+    });
+}
+
+function renderPunchcard(records) {
+    const cells = trainingPunchcard(records);
+    const maxHours = Math.max(0, ...cells.map((cell) => cell.hours));
+    const busiest = [...cells].sort((a, b) => b.sessions - a.sessions)[0];
+    punchcardCaption.textContent = busiest
+        ? `Local start time · bubble size = training hours · busiest slot: ${WEEKDAYS[busiest.weekday]} ${busiest.hour}:00 (${busiest.sessions} sessions)`
+        : "No start times for this period.";
+    drawChart("punchcardChart", {
+        type: "bubble",
+        data: {
+            datasets: [{
+                data: cells.map((cell) => ({
+                    x: cell.hour,
+                    y: cell.weekday,
+                    r: maxHours ? 3 + 13 * Math.sqrt(cell.hours / maxHours) : 3,
+                    cell,
+                })),
+                backgroundColor: COLOR_MINT + "99",
+                borderColor: COLOR_MINT,
+            }],
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    ...TOOLTIP_STYLE,
+                    callbacks: {
+                        label: (ctx) => {
+                            const { cell } = ctx.raw;
+                            return `${WEEKDAYS[cell.weekday]} ${cell.hour}:00 · ${cell.sessions} sessions · ${cell.hours.toFixed(1)} h`;
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: axis("Start hour (local time)", {
+                    min: -0.5,
+                    max: 23.5,
+                    afterBuildTicks: (scale) => { scale.ticks = Array.from({ length: 24 }, (_, hour) => ({ value: hour })); },
+                    ticks: { autoSkip: false, callback: (value) => (value % 2 === 0 ? `${value}:00` : "") },
+                }),
+                y: axis("", {
+                    min: -0.6,
+                    max: 6.6,
+                    reverse: true,
+                    title: { display: false },
+                    afterBuildTicks: (scale) => { scale.ticks = WEEKDAYS.map((_, weekday) => ({ value: weekday })); },
+                    ticks: { autoSkip: false, callback: (value) => WEEKDAYS[value] ?? "" },
+                }),
+            },
+        },
+    });
+}
+
+function renderWeatherGroups(canvasId, groups, xTitle) {
+    drawChart(canvasId, {
+        type: "bar",
+        data: {
+            labels: groups.map((group) => group.label),
+            datasets: [
+                { type: "bar", label: "Avg training hours per day", data: groups.map((group) => group.averageHours), backgroundColor: COLOR_MINT + "cc", yAxisID: "y", order: 1 },
+                { type: "line", label: "Days with training (%)", data: groups.map((group) => group.trainedShare), borderColor: COLOR_LAVENDER, backgroundColor: COLOR_LAVENDER, borderWidth: 2, pointRadius: 4, yAxisID: "y1", tension: 0.3, order: 0 },
+            ],
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: "bottom", labels: { color: TICK_COLOR, boxWidth: 12 } },
+                tooltip: {
+                    ...TOOLTIP_STYLE,
+                    callbacks: {
+                        label: (ctx) => (ctx.dataset.yAxisID === "y1"
+                            ? `Trained on ${Math.round(ctx.parsed.y)}% of days`
+                            : `${ctx.parsed.y.toFixed(2)} h per day`),
+                        afterBody: (items) => {
+                            const group = groups[items[0].dataIndex];
+                            return `${group.trainingDays} of ${group.days} days with training`;
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: axis(xTitle),
+                y: axis("Hours per day", { beginAtZero: true }),
+                y1: axis("Days with training (%)", { position: "right", beginAtZero: true, max: 100, grid: { drawOnChartArea: false } }),
+            },
+        },
+    });
+}
+
+function renderWeather(records, range) {
+    const { temperature, precipitation } = trainingByWeather(records, weatherRecords, range);
+    const days = temperature.reduce((sum, band) => sum + band.days, 0);
+    temperatureCaption.textContent = days
+        ? `Daily max temperature · ${days} days, including days without training`
+        : "No weather data for this period.";
+    const measured = precipitation.reduce((sum, group) => sum + group.days, 0);
+    rainCaption.textContent = measured ? `Daily precipitation · ${measured} days` : "No weather data for this period.";
+    renderWeatherGroups("temperatureChart", temperature, "Max temperature");
+    renderWeatherGroups("rainChart", precipitation, "Precipitation");
 }
 
 function renderRecentRows(rows) {
@@ -232,7 +405,9 @@ function clearPage() {
     for (const id of ["trainingHoursValue", "trainingSessionsValue", "trainingStrainValue", "trainingPeakHrValue"]) {
         document.getElementById(id).textContent = "–";
     }
-    hoursCaption.textContent = "";
+    for (const caption of [hoursCaption, zoneCaption, punchcardCaption, temperatureCaption, rainCaption]) {
+        caption.textContent = "";
+    }
     renderRecentRows([]);
 }
 
@@ -254,7 +429,10 @@ function renderTraining(records, period, includeAll) {
     };
     renderTiles(summarizeTraining(selected));
     renderStackedHours(stackTrainingHours(selected, bucket, range), bucket);
+    renderZoneMix(selected, bucket, range);
     renderSportCharts(compareSports(selected));
+    renderPunchcard(selected);
+    renderWeather(selected, range);
     renderRecentRows(recentSessions(selected, 20));
 }
 
@@ -265,8 +443,9 @@ function rerender() {
 wirePeriodToggle(periodToggle, rerender);
 includeAllActivities.addEventListener("change", rerender);
 
-fetchJson("/workouts").then((records) => {
-    workoutRecords = records;
+Promise.all([fetchJson("/workouts"), fetchJson("/weather")]).then(([workouts, weather]) => {
+    workoutRecords = workouts;
+    weatherRecords = weather;
     rerender();
 }).catch(showLoadError);
 </script>

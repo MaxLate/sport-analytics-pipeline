@@ -363,6 +363,131 @@ function recentSessions(records, limit = 20) {
     .slice(0, limit);
 }
 
+// --- Heart-rate zones ------------------------------------------------------------
+
+// WHOOP zone 0 is below 50% of max heart rate, so it is left out of intensity shares.
+const INTENSITY_ZONE_FIELDS = [
+  "zone_one_milli",
+  "zone_two_milli",
+  "zone_three_milli",
+  "zone_four_milli",
+  "zone_five_milli",
+];
+
+function zoneMinutes(records) {
+  return INTENSITY_ZONE_FIELDS.map(
+    (field) => records.reduce((sum, record) => sum + (typeof record[field] === "number" ? record[field] : 0), 0) / 60000,
+  );
+}
+
+function sharesOf(minutes) {
+  const total = minutes.reduce((sum, value) => sum + value, 0);
+  return total ? minutes.map((value) => (value / total) * 100) : minutes.map(() => 0);
+}
+
+function zoneMixByBucket(records, bucket, range = null) {
+  const buckets = new Map();
+  for (const record of records) {
+    const bucketStart = bucketStartFor(record.date_day, bucket);
+    if (!buckets.has(bucketStart)) buckets.set(bucketStart, []);
+    buckets.get(bucketStart).push(record);
+  }
+  if (range) {
+    const last = bucketStartFor(range.end, bucket);
+    for (let start = bucketStartFor(range.start, bucket); start <= last; start = nextBucketStart(start, bucket)) {
+      if (!buckets.has(start)) buckets.set(start, []);
+    }
+  }
+  return [...buckets.keys()].sort().map((bucketStart) => {
+    const minutes = zoneMinutes(buckets.get(bucketStart));
+    return { bucketStart, minutes, shares: sharesOf(minutes) };
+  });
+}
+
+function intensitySplit(records) {
+  const minutes = zoneMinutes(records);
+  const total = minutes.reduce((sum, value) => sum + value, 0);
+  if (!total) return null;
+  return {
+    easy: ((minutes[0] + minutes[1]) / total) * 100,
+    moderate: (minutes[2] / total) * 100,
+    hard: ((minutes[3] + minutes[4]) / total) * 100,
+  };
+}
+
+// --- When training happens ---------------------------------------------------------
+
+// Monday = 0. Reads the local wall-clock time as written, without timezone conversion.
+function trainingPunchcard(records) {
+  const cells = new Map();
+  for (const record of records) {
+    const local = record.workout_start_time_local;
+    if (typeof local !== "string" || local.length < 13) continue;
+    const weekday = (new Date(`${local.slice(0, 10)}T00:00:00Z`).getUTCDay() + 6) % 7;
+    const hour = Number(local.slice(11, 13));
+    const key = `${weekday}-${hour}`;
+    if (!cells.has(key)) cells.set(key, { weekday, hour, sessions: 0, hours: 0 });
+    const cell = cells.get(key);
+    cell.sessions += 1;
+    cell.hours += (record.duration_minutes || 0) / 60;
+  }
+  return [...cells.values()].sort((a, b) => a.weekday - b.weekday || a.hour - b.hour);
+}
+
+// --- Training versus weather ---------------------------------------------------------
+
+const RAINY_DAY_MM = 1;
+const TEMPERATURE_BAND_C = 5;
+
+function weatherGroupSummary(days) {
+  const trained = days.filter((day) => day.hours > 0).length;
+  return {
+    days: days.length,
+    trainingDays: trained,
+    trainedShare: days.length ? (trained / days.length) * 100 : 0,
+    averageHours: days.length ? days.reduce((sum, day) => sum + day.hours, 0) / days.length : 0,
+  };
+}
+
+// Every weather day in the range counts, including days without training.
+function trainingByWeather(workouts, weatherDays, range) {
+  const minutesByDate = new Map();
+  for (const workout of workouts) {
+    const date = calendarDate(workout.date_day);
+    minutesByDate.set(date, (minutesByDate.get(date) || 0) + (workout.duration_minutes || 0));
+  }
+  const days = weatherDays
+    .map((day) => ({ ...day, date: calendarDate(day.date_day) }))
+    .filter((day) => day.date >= range.start && day.date <= range.end)
+    .map((day) => ({
+      temperature: day.temperature_max_celsius,
+      precipitation: day.precipitation_sum_mm,
+      hours: (minutesByDate.get(day.date) || 0) / 60,
+    }));
+
+  const bands = new Map();
+  for (const day of days) {
+    if (typeof day.temperature !== "number") continue;
+    const low = Math.floor(day.temperature / TEMPERATURE_BAND_C) * TEMPERATURE_BAND_C;
+    if (!bands.has(low)) bands.set(low, []);
+    bands.get(low).push(day);
+  }
+  const temperature = [...bands.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([low, group]) => ({
+      low,
+      label: `${low} to ${low + TEMPERATURE_BAND_C} °C`,
+      ...weatherGroupSummary(group),
+    }));
+
+  const measured = days.filter((day) => typeof day.precipitation === "number");
+  const precipitation = [
+    { label: "Dry", ...weatherGroupSummary(measured.filter((day) => day.precipitation < RAINY_DAY_MM)) },
+    { label: `Rain (≥ ${RAINY_DAY_MM} mm)`, ...weatherGroupSummary(measured.filter((day) => day.precipitation >= RAINY_DAY_MM)) },
+  ];
+  return { temperature, precipitation };
+}
+
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     avgField,
@@ -388,5 +513,9 @@ if (typeof module !== "undefined" && module.exports) {
     periodStart,
     compareSports,
     recentSessions,
+    zoneMixByBucket,
+    intensitySplit,
+    trainingPunchcard,
+    trainingByWeather,
   };
 }

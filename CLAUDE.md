@@ -117,7 +117,9 @@ DuckDB allows exactly one writer connection to a given `.duckdb` file at a time.
 
 Seeds (`seeds/activity_mapping.csv`, `seeds/mooncalender.csv`) provide manual mapping/lookup data joined into intermediate models. `activity_mapping.csv` is filtered to WHOOP-only rows (the source project also had Strava rows). `mooncalender.csv` covers 2024-01-01 through 2026-12-31 as ported — it will need regenerating (e.g. via the `astral` package's `astral.moon.phase()`) before it runs out; not yet automated.
 
-Weather data (`fct_weather_daily`) is modeled and tested. The dashboard's `/sleep` endpoint joins its `temperature_min_celsius` on `wake_up_date` for the Sleep page.
+Weather data (`fct_weather_daily`) is modeled and tested. The dashboard's `/sleep` endpoint joins its `temperature_min_celsius` on `wake_up_date` for the Sleep page. The Training page fetches `/weather` separately and joins it to workouts by `date_day` in `trainingByWeather`.
+
+WHOOP timestamps are UTC (`workout_start_time`, and the `date_day` derived from it). `workout_start_time_local` applies WHOOP's per-record `timezone_offset` and is what the Training page's punchcard uses.
 
 Default materialization is `table`; staging is overridden to `view` (see `dbt_project.yml` `models:` block).
 

@@ -10,6 +10,10 @@ final as (
         id :: varchar as whoop_workout_id,
         start :: timestamp as workout_start_time,
         "end" :: timestamp as workout_end_time,
+        start :: timestamp + to_minutes(
+            (case when left(timezone_offset, 1) = '-' then -1 else 1 end)
+            * (substr(timezone_offset, 2, 2) :: integer * 60 + substr(timezone_offset, 5, 2) :: integer)
+        ) as workout_start_time_local,
         sport_name :: varchar as whoop_activity_name,
 
         score.strain :: double as activity_strain,

@@ -162,6 +162,11 @@ models:
         tests:
           - not_null
 
+      - name: workout_start_time_local
+        description: Workout start in the user's local time (UTC start shifted by WHOOP's timezone offset).
+        tests:
+          - not_null
+
       - name: activity_strain
         description: WHOOP strain score for this specific workout (0-21 scale, where higher = more intense).
 

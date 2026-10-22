@@ -17,6 +17,7 @@ enhanced as (
         date_trunc('day', workout_start_time) :: date as date_day,
         workout_start_time,
         workout_end_time,
+        workout_start_time_local,
         date_diff('minute', workout_start_time, workout_end_time) as duration_minutes,
 
         whoop_activity_name,
@@ -47,6 +48,7 @@ final as (
         enhanced.date_day,
         enhanced.workout_start_time,
         enhanced.workout_end_time,
+        enhanced.workout_start_time_local,
         enhanced.duration_minutes,
         enhanced.activity_strain,
         enhanced.average_heart_rate,

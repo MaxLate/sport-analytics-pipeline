@@ -37,10 +37,13 @@ def test_workouts_query_has_the_training_fields():
     assert {
         "date_day",
         "workout_start_time",
+        "workout_start_time_local",
         "activity_name",
         "is_sport_exercise",
         "duration_minutes",
         "activity_strain",
         "average_heart_rate",
         "max_heart_rate",
+        "zone_zero_milli",
+        "zone_five_milli",
     } <= set(frame.columns)

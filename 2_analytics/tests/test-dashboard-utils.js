@@ -25,6 +25,10 @@ const {
   periodStart,
   compareSports,
   recentSessions,
+  zoneMixByBucket,
+  intensitySplit,
+  trainingPunchcard,
+  trainingByWeather,
 } = require("../dashboard/dashboard-utils.js");
 
 test("avgField ignores null and undefined", () => {
@@ -420,4 +424,74 @@ test("recentSessions returns the newest twenty sessions", () => {
   const recent = recentSessions(records);
   assert.equal(recent.length, 20);
   assert.equal(recent[0].workout_start_time, "2026-09-25T08:00:00");
+});
+
+const MINUTE_MS = 60000;
+
+function zoned(date_day, [z0, z1, z2, z3, z4, z5]) {
+  return {
+    date_day,
+    zone_zero_milli: z0 * MINUTE_MS,
+    zone_one_milli: z1 * MINUTE_MS,
+    zone_two_milli: z2 * MINUTE_MS,
+    zone_three_milli: z3 * MINUTE_MS,
+    zone_four_milli: z4 * MINUTE_MS,
+    zone_five_milli: z5 * MINUTE_MS,
+  };
+}
+
+test("zoneMixByBucket shares zones 1-5 per bucket and ignores zone 0", () => {
+  const mix = zoneMixByBucket([
+    zoned("2026-09-01", [100, 30, 10, 0, 0, 0]),
+    zoned("2026-09-02", [0, 0, 0, 20, 20, 0]),
+  ], "day", { start: "2026-09-01", end: "2026-09-03" });
+  assert.deepEqual(mix.map((row) => row.bucketStart), ["2026-09-01", "2026-09-02", "2026-09-03"]);
+  assert.deepEqual(mix[0].shares, [75, 25, 0, 0, 0]);
+  assert.deepEqual(mix[1].minutes, [0, 0, 20, 20, 0]);
+  assert.deepEqual(mix[2].shares, [0, 0, 0, 0, 0]);
+});
+
+test("intensitySplit groups zones 1-2, 3 and 4-5", () => {
+  const split = intensitySplit([zoned("2026-09-01", [50, 40, 40, 10, 5, 5])]);
+  assert.deepEqual(split, { easy: 80, moderate: 10, hard: 10 });
+  assert.equal(intensitySplit([zoned("2026-09-01", [30, 0, 0, 0, 0, 0])]), null);
+});
+
+test("trainingPunchcard buckets by local weekday and hour", () => {
+  const cells = trainingPunchcard([
+    { workout_start_time_local: "2026-09-07T18:30:00", duration_minutes: 60 }, // Monday
+    { workout_start_time_local: "2026-09-14T18:05:00", duration_minutes: 30 }, // Monday
+    { workout_start_time_local: "2026-09-13T07:00:00", duration_minutes: 45 }, // Sunday
+    { workout_start_time_local: null, duration_minutes: 45 },
+  ]);
+  assert.deepEqual(cells, [
+    { weekday: 0, hour: 18, sessions: 2, hours: 1.5 },
+    { weekday: 6, hour: 7, sessions: 1, hours: 0.75 },
+  ]);
+});
+
+test("trainingByWeather counts days without training and splits rain at 1 mm", () => {
+  const result = trainingByWeather(
+    [
+      { date_day: "2026-09-01", duration_minutes: 60 },
+      { date_day: "2026-09-01", duration_minutes: 30 },
+      { date_day: "2026-09-03", duration_minutes: 60 },
+    ],
+    [
+      { date_day: "2026-09-01", temperature_max_celsius: 12, precipitation_sum_mm: 0 },
+      { date_day: "2026-09-02", temperature_max_celsius: 14, precipitation_sum_mm: 5 },
+      { date_day: "2026-09-03", temperature_max_celsius: 22, precipitation_sum_mm: 0.4 },
+      { date_day: "2026-09-04", temperature_max_celsius: 30, precipitation_sum_mm: 0 },
+    ],
+    { start: "2026-09-01", end: "2026-09-03" },
+  );
+  assert.deepEqual(result.temperature.map((band) => [band.label, band.days, band.trainingDays, band.averageHours]), [
+    ["10 to 15 °C", 2, 1, 0.75],
+    ["20 to 25 °C", 1, 1, 1],
+  ]);
+  assert.equal(result.temperature[0].trainedShare, 50);
+  assert.deepEqual(result.precipitation.map((group) => [group.label, group.days, group.trainingDays]), [
+    ["Dry", 2, 2],
+    ["Rain (≥ 1 mm)", 1, 0],
+  ]);
 });

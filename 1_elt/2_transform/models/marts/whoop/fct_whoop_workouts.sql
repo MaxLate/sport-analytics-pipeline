@@ -14,6 +14,7 @@ final as (
         -- workout time metrics
         workout_start_time,
         workout_end_time,
+        workout_start_time_local,
         duration_minutes,
 
         -- workout activity metrics

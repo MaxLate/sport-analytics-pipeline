@@ -248,6 +248,7 @@ models:
       - **Workout timing**:
         - workout_start_time: Timestamp when the workout began
         - workout_end_time: Timestamp when the workout ended
+        - workout_start_time_local: Workout start in the user's local time (UTC start plus WHOOP's timezone offset)
         - duration: Total duration of the workout (typically in seconds or minutes)
       - **Activity metrics**:
         - activity_name: Name/type of the activity (e.g., "Running", "Cycling", "Weight Training")
