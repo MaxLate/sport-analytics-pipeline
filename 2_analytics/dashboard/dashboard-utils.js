@@ -222,20 +222,41 @@ function pearsonCorrelation(pairs) {
   return { r, n, label: associationLabel(r) };
 }
 
-function groupSleepPerformanceByMoonPhase(records) {
+// Lunar-cycle order, as named in the mooncalender seed.
+const MOON_PHASES = [
+  ["New Moon", "🌑"],
+  ["Waxing Crescent", "🌒"],
+  ["First Quarter", "🌓"],
+  ["Waxing Gibbous", "🌔"],
+  ["Full Moon", "🌕"],
+  ["Waning Gibbous", "🌖"],
+  ["Last Quarter", "🌗"],
+  ["Waning Crescent", "🌘"],
+];
+const MOON_PHASE_EMOJI = new Map(MOON_PHASES);
+const MOON_PHASE_ORDER = new Map(MOON_PHASES.map(([name], index) => [name, index]));
+
+function moonPhaseEmoji(phase) {
+  if (typeof phase !== "string") return "";
+  return MOON_PHASE_EMOJI.get(phase) ?? "🌙";
+}
+
+function groupByMoonPhase(records, field) {
   const groups = new Map();
   for (const record of records) {
-    if (typeof record.moon_phase !== "string" || typeof record.sleep_performance !== "number") continue;
+    if (typeof record.moon_phase !== "string" || typeof record[field] !== "number") continue;
     if (!groups.has(record.moon_phase)) groups.set(record.moon_phase, []);
-    groups.get(record.moon_phase).push(record.sleep_performance);
+    groups.get(record.moon_phase).push(record[field]);
   }
+  const order = (phase) => MOON_PHASE_ORDER.get(phase) ?? MOON_PHASES.length;
   return [...groups.entries()]
     .map(([moon_phase, values]) => ({
       moon_phase,
+      emoji: moonPhaseEmoji(moon_phase),
       nights: values.length,
-      average_performance: values.reduce((sum, value) => sum + value, 0) / values.length,
+      average: values.reduce((sum, value) => sum + value, 0) / values.length,
     }))
-    .sort((a, b) => b.nights - a.nights || a.moon_phase.localeCompare(b.moon_phase));
+    .sort((a, b) => order(a.moon_phase) - order(b.moon_phase) || a.moon_phase.localeCompare(b.moon_phase));
 }
 
 // --- Training aggregation ------------------------------------------------------
@@ -359,7 +380,8 @@ if (typeof module !== "undefined" && module.exports) {
     mainSleepEpisodes,
     pairedValues,
     pearsonCorrelation,
-    groupSleepPerformanceByMoonPhase,
+    groupByMoonPhase,
+    moonPhaseEmoji,
     filterTrainingActivities,
     summarizeTraining,
     stackTrainingHours,

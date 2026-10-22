@@ -17,7 +17,8 @@ const {
   mainSleepEpisodes,
   pairedValues,
   pearsonCorrelation,
-  groupSleepPerformanceByMoonPhase,
+  groupByMoonPhase,
+  moonPhaseEmoji,
   filterTrainingActivities,
   summarizeTraining,
   stackTrainingHours,
@@ -288,14 +289,33 @@ test("pearsonCorrelation is unavailable for too few points or zero variance", ()
   assert.equal(pearsonCorrelation([{ x: 1, y: 2 }, { x: 1, y: 3 }, { x: 1, y: 4 }]).label, "unavailable");
 });
 
-test("groupSleepPerformanceByMoonPhase averages performance and omits empty phases", () => {
-  const grouped = groupSleepPerformanceByMoonPhase([
-    { moon_phase: "Full Moon", sleep_performance: 80 },
-    { moon_phase: "Full Moon", sleep_performance: 60 },
-    { moon_phase: null, sleep_performance: 50 },
-    { moon_phase: "New Moon", sleep_performance: null },
+test("groupByMoonPhase averages the field and omits empty phases", () => {
+  const grouped = groupByMoonPhase([
+    { moon_phase: "Full Moon", asleep_duration_minutes: 480 },
+    { moon_phase: "Full Moon", asleep_duration_minutes: 420 },
+    { moon_phase: null, asleep_duration_minutes: 400 },
+    { moon_phase: "New Moon", asleep_duration_minutes: null },
+  ], "asleep_duration_minutes");
+  assert.deepEqual(grouped, [{ moon_phase: "Full Moon", emoji: "🌕", nights: 2, average: 450 }]);
+});
+
+test("groupByMoonPhase orders phases along the lunar cycle", () => {
+  const phases = ["Waning Crescent", "Full Moon", "New Moon", "First Quarter"];
+  const grouped = groupByMoonPhase(
+    phases.map((moon_phase) => ({ moon_phase, asleep_duration_minutes: 400 })),
+    "asleep_duration_minutes",
+  );
+  assert.deepEqual(grouped.map((group) => group.moon_phase), [
+    "New Moon", "First Quarter", "Full Moon", "Waning Crescent",
   ]);
-  assert.deepEqual(grouped, [{ moon_phase: "Full Moon", nights: 2, average_performance: 70 }]);
+});
+
+test("moonPhaseEmoji maps all eight phases and falls back for unknown names", () => {
+  assert.equal(moonPhaseEmoji("New Moon"), "🌑");
+  assert.equal(moonPhaseEmoji("Waxing Gibbous"), "🌔");
+  assert.equal(moonPhaseEmoji("Last Quarter"), "🌗");
+  assert.equal(moonPhaseEmoji(null), "");
+  assert.equal(moonPhaseEmoji("Blue Moon"), "🌙");
 });
 
 // --- Training aggregation ----------------------------------------------------

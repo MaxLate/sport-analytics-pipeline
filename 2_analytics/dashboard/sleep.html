@@ -65,7 +65,8 @@
 </div>
 
 <div class="panel">
-    <h2 class="sectionTitle"><span>Average sleep performance by moon phase</span></h2>
+    <h2 class="sectionTitle"><span>Average sleep time by moon phase</span></h2>
+    <p class="label" id="phaseCaption"></p>
     <canvas id="moonPhaseChart" class="chart-box"></canvas>
 </div>
 
@@ -96,11 +97,42 @@ function correlationText(result) {
     return `${result.label} · r ${result.r === null ? "unavailable" : result.r.toFixed(2)} · ${result.n} nights`;
 }
 
+// Above this many nights the emoji row gets too dense; the phase stays in the tooltip.
+const MOON_ROW_MAX_NIGHTS = 45;
+
+function fmtMinutes(minutes) {
+    const total = Math.round(minutes);
+    return `${Math.floor(total / 60)}h ${String(total % 60).padStart(2, "0")}m`;
+}
+
 function renderPerformanceChart(rows) {
+    const dates = rows.map((row) => fmtDate(calendarDate(row.date_day)));
+    const showMoonRow = rows.length <= MOON_ROW_MAX_NIGHTS;
+    // Pixels per night, estimated from the canvas minus the y-axis gutter.
+    const slot = (chart) => Math.max(1, (chart.width - 60) / rows.length);
+    const ticks = showMoonRow
+        ? {
+            autoSkip: false,
+            maxRotation: 0,
+            font: (ctx) => ({ size: Math.max(9, Math.min(13, Math.floor(slot(ctx.chart)) - 1)) }),
+            callback: function (value, index) {
+                const width = slot(this.chart);
+                const moonEvery = Math.ceil(10 / width);
+                const dateEvery = Math.ceil(70 / width);
+                return [
+                    index % moonEvery === 0 ? moonPhaseEmoji(rows[index].moon_phase) : "",
+                    index % dateEvery === 0 ? dates[index] : "",
+                ];
+            },
+        }
+        : { autoSkip: true, maxTicksLimit: 8 };
+    performanceCaption.textContent = showMoonRow
+        ? `${rows.length} nights · moon phase per night below the chart`
+        : `${rows.length} nights · hover a point for its moon phase`;
     drawChart("sleepPerformanceChart", {
         type: "line",
         data: {
-            labels: rows.map((row) => fmtDate(calendarDate(row.date_day))),
+            labels: dates,
             datasets: [{
                 data: rows.map((row) => row.sleep_performance),
                 borderColor: COLOR_SLEEP,
@@ -114,10 +146,19 @@ function renderPerformanceChart(rows) {
             maintainAspectRatio: false,
             plugins: {
                 legend: { display: false },
-                tooltip: { ...TOOLTIP_STYLE, callbacks: { label: (ctx) => `Sleep performance: ${ctx.formattedValue}%` } },
+                tooltip: {
+                    ...TOOLTIP_STYLE,
+                    callbacks: {
+                        title: (items) => {
+                            const row = rows[items[0].dataIndex];
+                            return row.moon_phase ? `${dates[items[0].dataIndex]} · ${moonPhaseEmoji(row.moon_phase)} ${row.moon_phase}` : dates[items[0].dataIndex];
+                        },
+                        label: (ctx) => `Sleep performance: ${ctx.formattedValue}%`,
+                    },
+                },
             },
             scales: {
-                x: axis("Night", { ticks: { autoSkip: true, maxTicksLimit: 8 } }),
+                x: axis("Night", { ticks }),
                 y: axis("Sleep performance (%)"),
             },
         },
@@ -143,11 +184,12 @@ function renderScatter(canvasId, pairs, color, xTitle, xUnit) {
 }
 
 function renderPhaseChart(phases) {
+    phaseCaption.textContent = `${phases.reduce((sum, phase) => sum + phase.nights, 0)} nights`;
     drawChart("moonPhaseChart", {
         type: "bar",
         data: {
-            labels: phases.map((phase) => phase.moon_phase),
-            datasets: [{ data: phases.map((phase) => phase.average_performance), backgroundColor: COLOR_SLEEP }],
+            labels: phases.map((phase) => [phase.emoji, phase.moon_phase]),
+            datasets: [{ data: phases.map((phase) => phase.average / 60), backgroundColor: COLOR_SLEEP }],
         },
         options: {
             maintainAspectRatio: false,
@@ -156,11 +198,15 @@ function renderPhaseChart(phases) {
                 tooltip: {
                     ...TOOLTIP_STYLE,
                     callbacks: {
-                        label: (ctx) => `${ctx.parsed.y.toFixed(0)}% avg · ${phases[ctx.dataIndex].nights} nights`,
+                        title: (items) => `${phases[items[0].dataIndex].emoji} ${phases[items[0].dataIndex].moon_phase}`,
+                        label: (ctx) => `${fmtMinutes(phases[ctx.dataIndex].average)} avg asleep · ${phases[ctx.dataIndex].nights} nights`,
                     },
                 },
             },
-            scales: { x: axis("Moon phase"), y: axis("Avg sleep performance (%)", { beginAtZero: true, max: 100 }) },
+            scales: {
+                x: axis("Moon phase", { ticks: { autoSkip: false, maxRotation: 0, font: { size: 12 } } }),
+                y: axis("Avg time asleep (h)", { beginAtZero: true }),
+            },
         },
     });
 }
@@ -171,7 +217,7 @@ function clearPage() {
     for (const id of ["sleepPerformanceValue", "sleepDurationValue", "sleepEfficiencyValue"]) {
         document.getElementById(id).textContent = "–";
     }
-    for (const id of ["performanceCaption", "moonCaption", "temperatureCaption"]) {
+    for (const id of ["performanceCaption", "moonCaption", "temperatureCaption", "phaseCaption"]) {
         document.getElementById(id).textContent = "";
     }
 }
@@ -189,11 +235,10 @@ function renderSleep(records, period) {
     const performance = avgField(performanceRows, "sleep_performance");
     sleepPerformanceValue.textContent = performance === null ? "–" : `${Math.round(performance)}%`;
     const duration = avgField(selected, "asleep_duration_minutes");
-    sleepDurationValue.textContent = duration === null ? "–" : `${Math.floor(duration / 60)}h ${Math.round(duration % 60)}m`;
+    sleepDurationValue.textContent = duration === null ? "–" : fmtMinutes(duration);
     const efficiency = avgField(selected, "sleep_efficiency");
     sleepEfficiencyValue.textContent = efficiency === null ? "–" : `${Math.round(efficiency)}%`;
 
-    performanceCaption.textContent = `${performanceRows.length} nights`;
     renderPerformanceChart(performanceRows);
 
     const moonPairs = pairedValues(performanceRows, "moon_illumination", "sleep_performance");
@@ -203,7 +248,7 @@ function renderSleep(records, period) {
     renderScatter("moonScatter", moonPairs, COLOR_SLEEP, "Moon illumination (%)", "% illuminated");
     renderScatter("temperatureScatter", temperaturePairs, COLOR_WEATHER, "Daily minimum temperature (°C)", "°C");
 
-    renderPhaseChart(groupSleepPerformanceByMoonPhase(performanceRows));
+    renderPhaseChart(groupByMoonPhase(selected, "asleep_duration_minutes"));
 }
 
 wirePeriodToggle(periodToggle, (period) => renderSleep(sleepRecords, period));
