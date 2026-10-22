@@ -18,7 +18,7 @@ Python deps are managed with `uv` (Python >=3.12, venv at `.venv`).
 uv sync                      # install deps
 ```
 
-Config: copy `config_sample.yml` to `config.yml` (gitignored) and fill in WHOOP API credentials before running extract scripts. Weather needs no credentials (Open-Meteo is a free, keyless API) — only the `weather.latitude`/`longitude`/`timezone` block, which must be set to your location.
+Config: copy `config_sample.yml` to `config.yml` (gitignored) and fill in WHOOP API credentials before running extract scripts. Weather needs no credentials (Open-Meteo is a free, keyless API) — only the `weather.latitude`/`longitude`/`timezone` block. Latitude and longitude are required and have no default in code, so the location stays in the gitignored `config.yml`; don't name it in committed files.
 
 WHOOP auth is a one-time interactive step:
 

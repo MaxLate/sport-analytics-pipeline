@@ -1,6 +1,6 @@
 sources:
   - name: weather
-    description: Daily weather data for the configured location, sourced from Open-Meteo.
+    description: Daily weather data for the location configured in config.yml, sourced from Open-Meteo.
     schema: weather
 
     tables:

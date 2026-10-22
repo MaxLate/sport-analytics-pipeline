@@ -20,7 +20,7 @@ An end-to-end analytics engineering project: WHOOP fitness data and local weathe
 - **Data quality as a gate:** 116 dbt tests (uniqueness, not-null, accepted values, relationships) run inside `dbt build`. A failing test stops the downstream layers in Airflow.
 - **Source-aware loading:** WHOOP records are immutable, so loads are append-only with skip-existing. Open-Meteo revises recent days, so weather is upserted by date over a lookback window.
 - **Orchestration:** Airflow DAG (docker-compose) with parallel extracts and a layer-by-layer `dbt build`. A `PIPELINE_MODE=sample` switch runs the whole DAG without credentials.
-- **Semantic layer + LLM chat:** a YAML semantic layer in dbt semantic-model shape. Metric questions compile deterministically to SQL, and open questions go to local LLM agents. Every query is parsed and guarded as a read-only `SELECT`.
+- **Semantic layer + LLM chat:** a YAML semantic layer in dbt semantic-model shape. Metric questions compile deterministically to SQL, and open questions go to local LLM agents. Every query is parsed and guarded as a read-only `SELECT`. The LLM path is still work in progress (see [Ask your data](#-ask-your-data-llm-module)).
 - **CI/CD:** GitHub Actions runs ruff, sqlfluff, the full `dbt build`, pytest and JS tests on sample data, then builds the Airflow image and imports the DAG. `v*` tags publish the image to GHCR.
 
 ## 🏗️ Architecture
@@ -141,7 +141,7 @@ Three pages built with static HTML and Chart.js, with no build step. Data logic 
 | Source | What | How |
 |---|---|---|
 | **WHOOP** | Recovery, sleep, workouts | OAuth API, one-time browser auth, then incremental daily extracts. Append-only load. |
-| **Open-Meteo** | Daily local weather (temperature, precipitation, wind, sunshine) | Free, keyless. One-time `archive` backfill plus a daily `forecast` pull with a lookback window. Upsert by date. |
+| **Open-Meteo** | Daily weather at a configured location (temperature, precipitation, wind, sunshine) | Free, keyless. One-time `archive` backfill plus a daily `forecast` pull with a lookback window. Upsert by date. |
 | **Moon phase** | Phase and illumination per day | Static dbt seed (`mooncalender.csv`, 2024–2026), joined onto sleep by date. |
 
 ## 🛠️ Tech Stack
@@ -209,7 +209,7 @@ cp config_sample.yml config.yml                 # fill in WHOOP client_id / clie
 uv run python 1_elt/0_extract/whoop/auth_whoop.py   # one-time OAuth flow
 ```
 
-Weather needs no credentials. The `weather:` block in `config.yml` must be set to your location. `config.yml` is gitignored.
+Weather needs no credentials, only your location: set `latitude`, `longitude` and `timezone` in the `weather:` block of `config.yml`. `config.yml` is gitignored.
 
 ## 📖 Usage
 
@@ -246,7 +246,12 @@ cd 3_orchestration && docker compose up --build
 
 ## 💬 Ask your data (LLM module)
 
-The Overview page has a chat panel (`POST /chat`) that answers questions from the marts. It is built around a small semantic layer, `2_analytics/chat/semantic_layer.yml`, written in the shape of dbt semantic models: each mart declares its grain, columns, entities (join keys) and measures.
+> **Status: work in progress.** The chat does not work reliably yet: open questions through the LLM agents are often answered wrongly or not at all. The next step is improving the semantic layer (more measures, dimensions, synonyms and example questions), so that more questions compile deterministically and the agents get better context.
+
+The Overview page has a chat panel (`POST /chat`) that answers questions from the marts. It is built around a small semantic layer, written in the shape of dbt semantic models: each mart declares its grain, columns, entities (join keys) and measures.
+
+- **Definition:** [`2_analytics/chat/semantic_layer.yml`](2_analytics/chat/semantic_layer.yml), a hand-written YAML file (not dbt's MetricFlow).
+- **Loader and compiler:** [`2_analytics/chat/semantic_layer.py`](2_analytics/chat/semantic_layer.py), which reads the YAML, matches metric questions and compiles them to SQL.
 
 1. **Metric questions are compiled deterministically, without an LLM.** "How many runs did I do in March 2026?" matches a declared measure and filter, compiles to one SQL aggregate, and is answered with a fixed sentence. Same question, same SQL, same answer.
 2. **Open questions go to a three-agent pipeline** (Google ADK, local Ollama model via LiteLLM): a scope agent checks relevance and picks tables and allowed joins from the semantic layer, a SQL agent writes one query, and an answer agent phrases the result from the returned rows only.

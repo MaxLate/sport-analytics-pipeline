@@ -111,13 +111,19 @@ class Config:
     def weather_city(self):
         return self.get("weather", "city", default="the configured location")
 
+    def _required_weather_coordinate(self, key):
+        value = self.get("weather", key)
+        if value is None:
+            raise ValueError(f"Set weather.{key} in config.yml")
+        return value
+
     @property
     def weather_latitude(self):
-        return self.get("weather", "latitude", default=0.0)
+        return self._required_weather_coordinate("latitude")
 
     @property
     def weather_longitude(self):
-        return self.get("weather", "longitude", default=0.0)
+        return self._required_weather_coordinate("longitude")
 
     @property
     def weather_timezone(self):
