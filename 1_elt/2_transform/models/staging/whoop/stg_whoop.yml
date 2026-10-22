@@ -188,7 +188,8 @@ models:
                     "weightlifting_msk",
                     "reformer-pilates",
                     "ultimate",
-                    "trail-running"
+                    "trail-running",
+                    "massage-therapy"
                   ]
 
           - name: activity_strain
