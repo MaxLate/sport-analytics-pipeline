@@ -43,6 +43,19 @@ def test_filter_values_exist_in_the_activity_seed():
         ), f"filter {item['label']!r} uses unknown activities {missing}"
 
 
+def test_every_seed_activity_has_a_filter():
+    with open(ACTIVITY_SEED, encoding="utf-8") as handle:
+        aligned = {row["aligned_activity_name"] for row in csv.DictReader(handle)}
+
+    covered = {
+        value
+        for item in semantic_layer.load_semantic_layer()["filters"]
+        for value in item["values"]
+    }
+    missing = aligned - covered
+    assert not missing, f"add filters to semantic_layer.yml for {sorted(missing)}"
+
+
 @pytest.mark.skipif(not chat_agents.DB_PATH.exists(), reason="warehouse not built")
 def test_every_referenced_column_exists_in_the_warehouse():
     con = duckdb.connect(str(chat_agents.DB_PATH), read_only=True)

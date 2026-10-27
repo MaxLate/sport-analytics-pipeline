@@ -49,21 +49,40 @@ _MONTHS = {
 }
 
 
+# Words the compiler cannot express. A question containing one goes to the agents
+# instead of being answered with that part silently dropped.
+_UNSUPPORTED = re.compile(
+    r"\b(?:today|yesterday|tonight|week|weeks|weekly|weekend|weekends|weekday|"
+    r"weekdays|month|months|monthly|year|years|yearly|daily|last|this|past|"
+    r"previous|recent|recently|since|between|ago|per|each|by|which|when|where|"
+    r"compare|compared|versus|vs|trend|than|morning|evening|night|and|or)\b"
+)
+_PLAIN_COUNT = re.compile(
+    r"\b(?:how many|number of|count of)\s+"
+    r"(?:workouts?|sessions?|training sessions?|trainings?)\b"
+)
+
+
 def compile_question(question: str) -> dict[str, str] | None:
-    """Build one aggregate query when the question has a known metric shape."""
+    """Build one aggregate query when every part of the question is understood."""
     layer = load_semantic_layer()
     text = question.lower()
     aggregation = _aggregation_for(text, layer["aggregations"])
-    if aggregation is None:
+    if aggregation is None or _UNSUPPORTED.search(text):
         return None
 
     period = _period_for(text)
-    matched_filter = _filter_for(text, layer["filters"])
+    if period is None and _mentions_a_period(text):
+        return None
+    matched_filters = _filters_for(text, layer["filters"])
+    if len(matched_filters) > 1:
+        return None
+    matched_filter = matched_filters[0] if matched_filters else None
     measure = _measure_for(text, aggregation, layer["measures"])
     if aggregation == "count":
-        model_name = matched_filter["model"] if matched_filter else _count_model(text)
-        if model_name is None:
+        if matched_filter is None and not _PLAIN_COUNT.search(text):
             return None
+        model_name = matched_filter["model"] if matched_filter else "workouts"
         expression = "COUNT(*)"
         label = matched_filter["label"] if matched_filter else "workouts"
         where = _filter_sql(matched_filter)
@@ -71,7 +90,7 @@ def compile_question(question: str) -> dict[str, str] | None:
         if measure is None or aggregation not in measure["aggs"]:
             return None
         if matched_filter and matched_filter["model"] != measure["model"]:
-            matched_filter = None
+            return None
         model_name = measure["model"]
         expression = f"{_sql_agg(aggregation)}({measure['expr']})"
         label = measure["label"]
@@ -200,11 +219,26 @@ def _aggregation_for(text: str, aggregations: dict[str, list[str]]) -> str | Non
     return None
 
 
+def _mentions_a_period(text: str) -> bool:
+    names = "|".join(_MONTHS)
+    return bool(re.search(rf"\b(?:{names}|20\d{{2}})\b", text))
+
+
 def _period_for(text: str) -> dict[str, str] | None:
     names = "|".join(_MONTHS)
+    if len(re.findall(r"\b20\d{2}\b", text)) > 1:
+        return None
     match = re.search(rf"\b({names})\s+(20\d{{2}})\b", text)
     if match is None:
-        return None
+        year_match = re.search(r"\b(?:in|during)\s+(20\d{2})\b", text)
+        if year_match is None or re.search(rf"\b(?:{names})\b", text):
+            return None
+        year = int(year_match.group(1))
+        return {
+            "label": str(year),
+            "start": f"{year:04d}-01-01",
+            "end": f"{year + 1:04d}-01-01",
+        }
     month = _MONTHS[match.group(1)]
     year = int(match.group(2))
     next_month = 1 if month == 12 else month + 1
@@ -216,11 +250,12 @@ def _period_for(text: str) -> dict[str, str] | None:
     }
 
 
-def _filter_for(text: str, filters: list[dict]) -> dict | None:
-    for item in filters:
-        if any(re.search(rf"\b{re.escape(term)}\b", text) for term in item["terms"]):
-            return item
-    return None
+def _filters_for(text: str, filters: list[dict]) -> list[dict]:
+    return [
+        item
+        for item in filters
+        if any(re.search(rf"\b{re.escape(term)}\b", text) for term in item["terms"])
+    ]
 
 
 def _measure_for(text: str, aggregation: str, measures: list[dict]) -> dict | None:
@@ -234,12 +269,6 @@ def _measure_for(text: str, aggregation: str, measures: list[dict]) -> dict | No
             continue
         if any(re.search(rf"\b{re.escape(term)}\b", text) for term in item["terms"]):
             return item
-    return None
-
-
-def _count_model(text: str) -> str | None:
-    if re.search(r"\bworkouts?\b|\bsessions?\b|\btraining\b", text):
-        return "workouts"
     return None
 
 

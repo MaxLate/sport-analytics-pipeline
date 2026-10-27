@@ -73,6 +73,32 @@ def test_open_ended_question_stays_with_the_agents():
     )
 
 
+def test_count_question_filters_on_any_seed_activity():
+    compiled = compile_question("How many HIIT workouts have I done?")
+    assert compiled is not None
+    assert "activity_name IN ('HIIT')" in compiled["sql"]
+    assert compiled["label"] == "HIIT workouts"
+
+
+def test_year_question_uses_a_full_year_range():
+    compiled = compile_question("How many runs did I do in 2026?")
+    assert "DATE '2026-01-01'" in compiled["sql"]
+    assert "DATE '2027-01-01'" in compiled["sql"]
+    assert compiled["period"] == "2026"
+
+
+def test_questions_with_unparsed_parts_stay_with_the_agents():
+    for question in [
+        "How many workouts did I do last week?",
+        "What was my average recovery score this month?",
+        "How many football workouts have I done?",
+        "How many runs per month did I do in 2026?",
+        "Which sport has the highest strain?",
+        "How many runs did I do on weekends?",
+    ]:
+        assert compile_question(question) is None, question
+
+
 def test_count_answer_is_one_sentence():
     assert format_metric_answer("count", "runs", 8, "March 2026") == (
         "You have done 8 runs in March 2026."

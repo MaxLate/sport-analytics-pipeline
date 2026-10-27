@@ -23,6 +23,106 @@ filters:
     label: hikes
     terms: [hikes, hike, hiking]
     values: [Hiking]
+  - model: workouts
+    column: activity_name
+    label: HIIT workouts
+    terms: [hiit]
+    values: [HIIT]
+  - model: workouts
+    column: activity_name
+    label: weight training sessions
+    terms: ["weight training", weightlifting, "weight lifting", powerlifting, "strength training", gym]
+    values: [WeightTraining]
+  - model: workouts
+    column: activity_name
+    label: yoga sessions
+    terms: [yoga]
+    values: [Yoga]
+  - model: workouts
+    column: activity_name
+    label: Pilates sessions
+    terms: [pilates]
+    values: [Pilates]
+  - model: workouts
+    column: activity_name
+    label: swims
+    terms: [swimming, swims, swim]
+    values: [Swim]
+  - model: workouts
+    column: activity_name
+    label: padel sessions
+    terms: [padel]
+    values: [Padel]
+  - model: workouts
+    column: activity_name
+    label: badminton sessions
+    terms: [badminton]
+    values: [Badminton]
+  - model: workouts
+    column: activity_name
+    label: Nordic ski sessions
+    terms: ["nordic ski", "ski touring", skiing, ski]
+    values: [Nordic Ski]
+  - model: workouts
+    column: activity_name
+    label: table tennis sessions
+    terms: ["table tennis", "ping pong"]
+    values: [Table Tennis]
+  - model: workouts
+    column: activity_name
+    label: ultimate frisbee sessions
+    terms: ["ultimate frisbee", frisbee]
+    values: [Ultimate Frisbee]
+  - model: workouts
+    column: activity_name
+    label: dance sessions
+    terms: [dance, dancing]
+    values: [Dance]
+  - model: workouts
+    column: activity_name
+    label: trampoline sessions
+    terms: [trampoline]
+    values: [Trampoline]
+  - model: workouts
+    column: activity_name
+    label: sauna sessions
+    terms: [sauna]
+    values: [Sauna]
+  - model: workouts
+    column: activity_name
+    label: stretching sessions
+    terms: [stretching, stretch]
+    values: [Stretching]
+  - model: workouts
+    column: activity_name
+    label: breath work sessions
+    terms: ["breath work", breathwork, breathing]
+    values: [Breath Work]
+  - model: workouts
+    column: activity_name
+    label: massage sessions
+    terms: [massage, massages]
+    values: [Massage Therapy]
+  - model: workouts
+    column: activity_name
+    label: dog walks
+    terms: ["dog walking", "dog walks", "dog walk", dog-walking]
+    values: [Dog-walking]
+  - model: workouts
+    column: activity_name
+    label: commutes
+    terms: [commuting, commutes, commute]
+    values: [Commuting]
+  - model: workouts
+    column: activity_name
+    label: watching sports sessions
+    terms: ["watching sports", "watching sport"]
+    values: [Watching Sports]
+  - model: workouts
+    column: activity_name
+    label: generic activity sessions
+    terms: ["generic activity", "generic activities"]
+    values: [Activity]
 
 measures:
   - model: recovery
